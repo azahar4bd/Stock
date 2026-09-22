@@ -1,0 +1,10 @@
+{
+  "name": "bkf-stock-register",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Bandhu Kallyan Foundation branch item stock register (BIMS)",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test/rules.js"
+  }
+}
