@@ -1,8 +1,8 @@
 # স্টক খাতা · BIMS
 
-**প্রিভিউ:** https://cdn.jsdelivr.net/gh/azahar4bd/Stock@274216e22f0a96ecc923bba40eeb45aeada0fa3d/docs/index.html
+**প্রিভিউ:** https://htmlpreview.github.io/?https://raw.githubusercontent.com/azahar4bd/Stock/arena/01a0c907-stock/docs/index.html
 
-GitHub Pages চালু থাকলে স্থায়ী লিংক: https://azahar4bd.github.io/Stock/  
+GitHub Pages চালু থাকলে ছোট লিংক: https://azahar4bd.github.io/Stock/  
 চালু করতে: Repository → Settings → Pages → Branch `arena/01a0c907-stock`, folder `/docs`, Save.
 
 বন্ধু কল্যাণ ফাউন্ডেশনের ব্রাঞ্চ আইটেম খাতা। পাসবুক, ফরম, হাজিরা খাতা ও ব্যাগের **গ্রহণ, বিতরণ ও স্থিতি** — শাখা আলাদা, অ্যাডমিন সব শাখা দেখেন।
