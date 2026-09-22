@@ -2,8 +2,38 @@
 
 const DEMO_PASSWORD = 'bkf2026';
 
-function isGithubPreview() {
-  return /(^|\.)github\.io$/.test(location.hostname);
+let useLocalStore = null;
+
+function staticHost() {
+  const host = location.hostname;
+  return /(^|\.)github\.io$/.test(host)
+    || host.endsWith('jsdelivr.net')
+    || host.endsWith('statically.io')
+    || host.endsWith('githack.com');
+}
+
+function isBrowserBook() {
+  return staticHost() || useLocalStore === true;
+}
+
+async function shouldUseLocal() {
+  if (useLocalStore != null) return useLocalStore;
+  if (!globalThis.bimsLocal) {
+    useLocalStore = false;
+    return false;
+  }
+  if (staticHost()) {
+    useLocalStore = true;
+    return true;
+  }
+  try {
+    const res = await fetch('api/health', { cache: 'no-store' });
+    const data = await res.json().catch(() => null);
+    useLocalStore = !(res.ok && data && data.app === 'BIMS');
+  } catch (e) {
+    useLocalStore = true;
+  }
+  return useLocalStore;
 }
 
 function appUrl(search) {
@@ -601,7 +631,7 @@ function icon(name) {
 }
 
 async function api(path, options) {
-  if (isGithubPreview() && globalThis.bimsLocal) {
+  if (await shouldUseLocal()) {
     try {
       return await globalThis.bimsLocal(path, options || {}, state.token);
     } catch (err) {
@@ -801,7 +831,7 @@ function renderShell() {
       '<div class="main">' +
         '<header class="topbar">' +
           '<div><h2>' + esc(t(titles[state.view] || 'navStock')) + '</h2>' +
-            (isGithubPreview() ? '<p class="preview-note">' + esc(t('previewNote')) + '</p>' : '') +
+            (isBrowserBook() ? '<p class="preview-note">' + esc(t('previewNote')) + '</p>' : '') +
           '</div>' +
           '<div class="top-actions">' +
             branchSelect +
