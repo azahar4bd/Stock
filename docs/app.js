@@ -1083,35 +1083,22 @@ function viewEntry() {
   if (!state.draft) state.draft = blankDraft();
   const d = state.draft;
   const editing = !!d.id;
-  let branches = isAdmin()
-    ? state.branches.filter(b => String(b.status).toLowerCase() === 'active')
-    : state.branches.filter(b => b.id === state.user.branchId);
-  if (d.branchId && !branches.some(b => b.id === d.branchId)) {
-    const extra = state.branches.find(b => b.id === d.branchId);
-    if (extra) branches = branches.concat([extra]);
-  }
   const itemOptions = ['<option value="">' + esc(t('pickItem')) + '</option>'].concat(orderedItems().map(item =>
     '<option value="' + esc(item) + '"' + (d.itemName === item ? ' selected' : '') + '>' + esc(itemLabel(item)) + '</option>'
   )).join('');
-  const branchOptions = branches.map(b =>
-    '<option value="' + esc(b.id) + '"' + (d.branchId === b.id ? ' selected' : '') + '>' + esc(branchLabel(b.id)) + ' · ' + esc(b.id) + '</option>'
-  ).join('');
   const lists = datalists();
   return '<section class="panel">' +
     '<div class="view-head"><div><h2 class="sheet-title">' + esc(editing ? t('editTitle') : t('entryTitle')) + '</h2><p class="muted">' + esc(t('entryHelp')) + '</p></div></div>' +
     (editing ? '<div class="edit-flag">' + esc(t('editTitle')) + ' · <span class="num">' + esc(d.id) + '</span></div>' : '') +
     '<form id="entry-form" autocomplete="off">' +
       '<input type="hidden" name="id" value="' + esc(d.id || '') + '">' +
-      '<div class="row-3">' +
-        field(t('date'), '<input type="date" name="date" required value="' + esc(d.date || '') + '">') +
-        field(t('srNo'), '<input name="srNo" value="' + esc(d.srNo || '') + '" inputmode="numeric">') +
-        field(t('branch'), '<select ' + (isAdmin() ? 'name="branchId"' : 'disabled') + '>' + branchOptions + '</select>' + (isAdmin() ? '' : '<input type="hidden" name="branchId" value="' + esc(d.branchId) + '">')) +
-      '</div>' +
+      '<input type="hidden" name="branchId" value="' + esc(d.branchId || '') + '">' +
+      '<input type="hidden" name="srNo" value="' + esc(d.srNo || '') + '">' +
+      field(t('date'), '<input type="date" name="date" required value="' + esc(d.date || '') + '">') +
       '<div class="row-2">' +
         field(t('item'), '<select name="itemName" id="item-select" required>' + itemOptions + '</select>') +
         field(t('chalan'), '<input name="chalanNo" value="' + esc(d.chalanNo || '') + '" placeholder="HO-0912">') +
       '</div>' +
-      '<div class="live-bal" id="live-balance"><span>' + esc(t('currentBal')) + '</span><strong>—</strong></div>' +
       '<div class="flow">' +
         '<div class="flow-box in"><h3>' + esc(t('receive')) + '</h3>' +
           field(t('fromWho'), '<input name="fromVal" list="from-list" value="' + esc(d.fromVal || '') + '" placeholder="' + esc(state.lang === 'bn' ? 'হেড অফিস / প্রারম্ভিক স্থিতি' : 'Head office / Opening') + '">') +
@@ -1130,6 +1117,7 @@ function viewEntry() {
       '</div>' +
     '</form></section>';
 }
+
 function field(label, control) {
   return '<label>' + esc(label) + control + '</label>';
 }
