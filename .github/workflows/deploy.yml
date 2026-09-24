@@ -1,0 +1,34 @@
+name: Deploy Netlify
+
+on:
+  push:
+    branches:
+      - arena/01a0c907-stock
+
+permissions:
+  contents: read
+  checks: write
+  issues: write
+
+concurrency:
+  group: bims-netlify-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install
+        run: npm install
+      - name: Publish key and deploy
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash scripts/publish-key-and-deploy.sh

@@ -1690,6 +1690,11 @@ async function enterAs(email) {
   showApp();
 }
 
+function allowAutoEnter() {
+  const host = location.hostname;
+  return host === 'localhost' || host === '127.0.0.1' || host.endsWith('.e2b.app') || host.endsWith('.e2b.dev');
+}
+
 async function boot() {
   bind();
   const login = document.getElementById('login');
@@ -1704,6 +1709,10 @@ async function boot() {
       state.token = '';
       sessionStorage.removeItem('bims_token');
     }
+  }
+  if (!allowAutoEnter()) {
+    showLogin();
+    return;
   }
   try {
     await enterAs('azahar4bd@gmail.com');

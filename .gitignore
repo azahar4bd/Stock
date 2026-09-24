@@ -1,4 +1,6 @@
 node_modules/
+deploy/private.pem
+deploy/tokens.txt
 data/db.json
 data/db.json.tmp
 *.log

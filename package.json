@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "description": "Bandhu Kallyan Foundation branch item stock register (BIMS)",
+  "dependencies": {
+    "@neondatabase/serverless": "1.1.0"
+  },
   "scripts": {
     "start": "node server.js",
     "test": "node test/rules.js"

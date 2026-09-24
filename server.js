@@ -531,7 +531,6 @@ function appData(db, user) {
 }
 
 let db = null;
-const sessions = new Map();
 
 function loadOrSeed() {
   if (fs.existsSync(DB_PATH)) {
@@ -550,28 +549,119 @@ function persistSync() {
   fs.renameSync(tmp, DB_PATH);
 }
 
-function createSession(user) {
-  const token = crypto.randomBytes(24).toString('hex');
-  sessions.set(token, { email: user.email, exp: Date.now() + 7 * 24 * 3600 * 1000 });
-  return token;
+function sessionSecret() {
+  return process.env.BIMS_SESSION_SECRET || process.env.DATABASE_URL || 'bims-local-dev-session';
 }
 
-function userFromRequest(req) {
-  const header = req.headers.authorization || '';
+function createSession(user) {
+  const payload = Buffer.from(JSON.stringify({
+    email: user.email,
+    exp: Date.now() + 7 * 24 * 3600 * 1000
+  })).toString('base64url');
+  const sig = crypto.createHmac('sha256', sessionSecret()).update(payload).digest('base64url');
+  return payload + '.' + sig;
+}
+
+function readSession(token) {
+  if (!token || !String(token).includes('.')) return null;
+  const parts = String(token).split('.');
+  if (parts.length !== 2) return null;
+  const [payload, sig] = parts;
+  const expect = crypto.createHmac('sha256', sessionSecret()).update(payload).digest('base64url');
+  const a = Buffer.from(sig);
+  const b = Buffer.from(expect);
+  if (a.length !== b.length || a.length === 0 || !crypto.timingSafeEqual(a, b)) return null;
+  let data;
+  try {
+    data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+  } catch {
+    return null;
+  }
+  if (!data || !data.email || Number(data.exp) < Date.now()) return null;
+  return data;
+}
+
+function userFromAuth(database, authorization, cookie) {
+  const header = authorization || '';
   let token = '';
   if (header.startsWith('Bearer ')) token = header.slice(7).trim();
-  if (!token) {
-    const cookie = req.headers.cookie || '';
-    const match = cookie.match(/(?:^|;\s*)bims=([^;]+)/);
+  if (!token && cookie) {
+    const match = String(cookie).match(/(?:^|;\s*)bims=([^;]+)/);
     if (match) token = decodeURIComponent(match[1]);
   }
   if (!token) throw new HttpError('UNAUTHENTICATED', 401);
-  const session = sessions.get(token);
-  if (!session || session.exp < Date.now()) {
-    sessions.delete(token);
-    throw new HttpError('UNAUTHENTICATED', 401);
+  const session = readSession(token);
+  if (!session) throw new HttpError('UNAUTHENTICATED', 401);
+  return resolveUser(database, session.email);
+}
+
+function getNeon() {
+  if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL missing');
+  const { neon } = require('@neondatabase/serverless');
+  return neon(process.env.DATABASE_URL);
+}
+
+async function initRemoteStore() {
+  const sql = getNeon();
+  await sql(`CREATE TABLE IF NOT EXISTS bims_state (
+    id text PRIMARY KEY,
+    data jsonb NOT NULL,
+    version integer NOT NULL DEFAULT 1
+  )`);
+  const rows = await sql('SELECT version FROM bims_state WHERE id = $1', ['main']);
+  if (!rows.length) {
+    const fresh = createFreshDb();
+    await sql(
+      'INSERT INTO bims_state (id, data, version) VALUES ($1, $2::jsonb, 1)',
+      ['main', JSON.stringify(fresh)]
+    );
   }
-  return resolveUser(db, session.email);
+  return { ok: true };
+}
+
+async function loadState() {
+  if (!process.env.DATABASE_URL) {
+    if (!db) loadOrSeed();
+    return { db, version: null, remote: false };
+  }
+  const sql = getNeon();
+  await sql(`CREATE TABLE IF NOT EXISTS bims_state (
+    id text PRIMARY KEY,
+    data jsonb NOT NULL,
+    version integer NOT NULL DEFAULT 1
+  )`);
+  const rows = await sql('SELECT data, version FROM bims_state WHERE id = $1', ['main']);
+  if (!rows.length) {
+    const fresh = createFreshDb();
+    await sql(
+      'INSERT INTO bims_state (id, data, version) VALUES ($1, $2::jsonb, 1)',
+      ['main', JSON.stringify(fresh)]
+    );
+    return { db: fresh, version: 1, remote: true };
+  }
+  const raw = rows[0].data;
+  const loaded = typeof raw === 'string' ? JSON.parse(raw) : raw;
+  ensureSuperAdmin(loaded);
+  return { db: loaded, version: Number(rows[0].version), remote: true };
+}
+
+async function saveState(state) {
+  if (!state.remote) {
+    db = state.db;
+    persistSync();
+    return;
+  }
+  const sql = getNeon();
+  const rows = await sql(
+    'UPDATE bims_state SET data = $1::jsonb, version = version + 1 WHERE id = $2 AND version = $3 RETURNING version',
+    [JSON.stringify(state.db), 'main', state.version]
+  );
+  if (!rows.length) {
+    const err = new Error('CONFLICT');
+    err.code = 'CONFLICT';
+    throw err;
+  }
+  state.version = Number(rows[0].version);
 }
 
 function readBody(req) {
@@ -653,151 +743,117 @@ function serveStatic(req, res, urlPath) {
   });
 }
 
-async function handleApi(req, res, urlPath) {
-  const method = req.method;
-  if (method === 'GET' && urlPath === '/api/health') {
-    send(res, 200, { ok: true, app: 'BIMS' });
-    return;
-  }
+function cookieHeader(token) {
+  if (!token) return { 'Set-Cookie': 'bims=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0' };
+  return {
+    'Set-Cookie': 'bims=' + encodeURIComponent(token) + '; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800'
+  };
+}
+
+async function perform(state, ctx) {
+  const method = ctx.method;
+  const urlPath = ctx.urlPath;
+  const body = ctx.body || {};
+  const database = state.db;
 
   if (method === 'POST' && urlPath === '/api/login') {
-    const body = await readBody(req);
     const email = clip(body.email, 120).toLowerCase();
     const password = String(body.password || '');
-    const row = db.users.find(u => u.email === email);
+    const row = database.users.find(u => u.email === email);
     if (!row) throw new HttpError('NOT_ALLOWED', 403);
     if (!verifyPassword(password, row.passwordHash)) throw new HttpError('BAD_PASSWORD');
-    const user = resolveUser(db, email);
+    const user = resolveUser(database, email);
     const token = createSession(user);
-    send(res, 200, { ok: true, token, user }, {
-      'Set-Cookie': 'bims=' + encodeURIComponent(token) + '; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800'
-    });
-    return;
+    return {
+      dirty: false,
+      status: 200,
+      payload: { ok: true, token, user },
+      headers: cookieHeader(token)
+    };
   }
 
-  const user = userFromRequest(req);
+  const user = userFromAuth(database, ctx.authorization, ctx.cookie);
 
   if (method === 'POST' && urlPath === '/api/logout') {
-    const header = req.headers.authorization || '';
-    if (header.startsWith('Bearer ')) sessions.delete(header.slice(7).trim());
-    send(res, 200, { ok: true }, { 'Set-Cookie': 'bims=; Path=/; HttpOnly; Max-Age=0' });
-    return;
+    return { dirty: false, status: 200, payload: { ok: true }, headers: cookieHeader('') };
   }
-
   if (method === 'GET' && urlPath === '/api/app') {
-    send(res, 200, appData(db, user));
-    return;
+    return { dirty: false, status: 200, payload: appData(database, user) };
   }
 
+  let result;
+  let dirty = true;
   if (method === 'POST' && urlPath === '/api/account/password') {
-    const body = await readBody(req);
-    const result = changePassword(db, user, body.current, body.next);
-    persistSync();
-    send(res, 200, { ok: true, ...result });
-    return;
-  }
-
-  if (method === 'POST' && urlPath === '/api/records') {
-    const body = await readBody(req);
-    const result = saveRecord(db, user, body);
-    persistSync();
-    send(res, 200, { ok: true, success: true, ...result });
-    return;
-  }
-
-  if (method === 'DELETE' && urlPath.startsWith('/api/records/')) {
+    result = changePassword(database, user, body.current, body.next);
+  } else if (method === 'POST' && urlPath === '/api/records') {
+    result = Object.assign({ success: true }, saveRecord(database, user, body));
+  } else if (method === 'DELETE' && urlPath.startsWith('/api/records/')) {
     const id = decodeURIComponent(urlPath.slice('/api/records/'.length));
-    const result = deleteRecord(db, user, id);
-    persistSync();
-    send(res, 200, { ok: true, success: true, ...result });
-    return;
+    result = Object.assign({ success: true }, deleteRecord(database, user, id));
+  } else if (method === 'POST' && urlPath === '/api/admin/branches') {
+    result = addBranch(database, user, body.branchId, body.branchName);
+  } else if (method === 'POST' && urlPath === '/api/admin/branches/status') {
+    result = setBranchStatus(database, user, body.branchId, body.status);
+  } else if (method === 'POST' && urlPath === '/api/admin/users') {
+    result = addUser(database, user, body.email, body.branchId, body.role);
+  } else if (method === 'POST' && urlPath === '/api/admin/users/email') {
+    result = updateUserEmail(database, user, body.oldEmail, body.newEmail);
+  } else if (method === 'POST' && urlPath === '/api/admin/users/status') {
+    result = setUserStatus(database, user, body.email, body.status);
+  } else if (method === 'POST' && urlPath === '/api/admin/users/password') {
+    result = resetPassword(database, user, body.email);
+  } else if (method === 'POST' && urlPath === '/api/admin/items') {
+    result = addItem(database, user, body.name);
+  } else if (method === 'DELETE' && urlPath === '/api/admin/items') {
+    result = removeItem(database, user, body.name);
+  } else if (method === 'GET' && urlPath === '/api/admin/backup') {
+    dirty = false;
+    result = backupData(database, user);
+  } else if (method === 'POST' && urlPath === '/api/admin/restore') {
+    result = restoreData(database, user, body);
+  } else if (method === 'DELETE' && urlPath === '/api/admin/samples') {
+    result = clearSamples(database, user);
+  } else {
+    throw new HttpError('NOT_FOUND', 404);
   }
+  return { dirty, status: 200, payload: Object.assign({ ok: true }, result) };
+}
 
-  if (method === 'POST' && urlPath === '/api/admin/branches') {
-    const body = await readBody(req);
-    const result = addBranch(db, user, body.branchId, body.branchName);
-    persistSync();
-    send(res, 200, { ok: true, ...result });
-    return;
+async function dispatch(ctx) {
+  const method = ctx.method;
+  const urlPath = String(ctx.urlPath || '').split('?')[0];
+  if (method === 'GET' && urlPath === '/api/health') {
+    return {
+      status: 200,
+      payload: { ok: true, app: 'BIMS', store: process.env.DATABASE_URL ? 'neon' : 'file' }
+    };
   }
-
-  if (method === 'POST' && urlPath === '/api/admin/branches/status') {
-    const body = await readBody(req);
-    const result = setBranchStatus(db, user, body.branchId, body.status);
-    persistSync();
-    send(res, 200, { ok: true, ...result });
-    return;
+  const next = Object.assign({}, ctx, { urlPath });
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const state = await loadState();
+    try {
+      const result = await perform(state, next);
+      if (result.dirty) await saveState(state);
+      return result;
+    } catch (err) {
+      if (err && err.code === 'CONFLICT' && attempt < 3) continue;
+      throw err;
+    }
   }
+  throw new HttpError('SERVER', 500);
+}
 
-  if (method === 'POST' && urlPath === '/api/admin/users') {
-    const body = await readBody(req);
-    const result = addUser(db, user, body.email, body.branchId, body.role);
-    persistSync();
-    send(res, 200, { ok: true, ...result });
-    return;
-  }
-
-  if (method === 'POST' && urlPath === '/api/admin/users/email') {
-    const body = await readBody(req);
-    const result = updateUserEmail(db, user, body.oldEmail, body.newEmail);
-    persistSync();
-    send(res, 200, { ok: true, ...result });
-    return;
-  }
-
-  if (method === 'POST' && urlPath === '/api/admin/users/status') {
-    const body = await readBody(req);
-    const result = setUserStatus(db, user, body.email, body.status);
-    persistSync();
-    send(res, 200, { ok: true, ...result });
-    return;
-  }
-
-  if (method === 'POST' && urlPath === '/api/admin/users/password') {
-    const body = await readBody(req);
-    const result = resetPassword(db, user, body.email);
-    persistSync();
-    send(res, 200, { ok: true, ...result });
-    return;
-  }
-
-  if (method === 'POST' && urlPath === '/api/admin/items') {
-    const body = await readBody(req);
-    const result = addItem(db, user, body.name);
-    persistSync();
-    send(res, 200, { ok: true, ...result });
-    return;
-  }
-
-  if (method === 'DELETE' && urlPath === '/api/admin/items') {
-    const body = await readBody(req);
-    const result = removeItem(db, user, body.name);
-    persistSync();
-    send(res, 200, { ok: true, ...result });
-    return;
-  }
-
-  if (method === 'GET' && urlPath === '/api/admin/backup') {
-    send(res, 200, { ok: true, ...backupData(db, user) });
-    return;
-  }
-
-  if (method === 'POST' && urlPath === '/api/admin/restore') {
-    const body = await readBody(req);
-    const result = restoreData(db, user, body);
-    persistSync();
-    send(res, 200, { ok: true, ...result });
-    return;
-  }
-
-  if (method === 'DELETE' && urlPath === '/api/admin/samples') {
-    const result = clearSamples(db, user);
-    persistSync();
-    send(res, 200, { ok: true, ...result });
-    return;
-  }
-
-  throw new HttpError('NOT_FOUND', 404);
+async function handleApi(req, res, urlPath) {
+  let body = {};
+  if (req.method !== 'GET' && req.method !== 'HEAD') body = await readBody(req);
+  const result = await dispatch({
+    method: req.method,
+    urlPath,
+    body,
+    authorization: req.headers.authorization || '',
+    cookie: req.headers.cookie || ''
+  });
+  send(res, result.status, result.payload, result.headers);
 }
 
 async function handler(req, res) {
@@ -852,5 +908,7 @@ module.exports = {
   clearSamples,
   DEFAULT_PASSWORD,
   SUPER_ADMIN_EMAIL,
-  todayISO
+  todayISO,
+  dispatch,
+  initRemoteStore
 };
