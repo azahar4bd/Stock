@@ -119,6 +119,11 @@ const I18N = {
     shortStock: 'ঘাটতি',
     itemCount: 'আইটেম',
     searchItems: 'আইটেম খুঁজুন',
+    stockTitle: 'স্টক রিপোর্ট',
+    stockHelp: 'সারি চাপলে সেই আইটেমের খাতা খুলবে।',
+    status: 'অবস্থা',
+    total: 'মোট',
+    serial: 'ক্রম',
     inQty: 'গ্রহণ',
     outQty: 'বিতরণ',
     balance: 'স্থিতি',
@@ -271,6 +276,11 @@ const I18N = {
     shortStock: 'Short',
     itemCount: 'Items',
     searchItems: 'Search items',
+    stockTitle: 'Stock report',
+    stockHelp: 'Tap a row to open that item in the register.',
+    status: 'Status',
+    total: 'Total',
+    serial: 'No.',
     inQty: 'In',
     outQty: 'Out',
     balance: 'On hand',
@@ -483,6 +493,7 @@ const state = {
   pendingNote: '',
   hideSampleNote: sessionStorage.getItem('bims_hide_sample') === '1',
   stockQ: '',
+  stockItem: '',
   regQ: '',
   regItem: '',
   regFrom: '',
@@ -929,45 +940,102 @@ function renderView() {
   }
 }
 
+function stockReportRows() {
+  const branch = effectiveBranch();
+  const branches = branch
+    ? state.branches.filter(b => b.id === branch)
+    : state.branches.filter(b => String(b.status).toLowerCase() === 'active');
+  const q = state.stockQ.trim().toLowerCase();
+  const rows = [];
+  branches.forEach(b => {
+    const map = stockMap(b.id);
+    orderedItems().forEach(item => {
+      const x = map[item];
+      if (!x) return;
+      if (state.stockItem && item !== state.stockItem) return;
+      const blob = (item + ' ' + itemLabel(item) + ' ' + itemSub(item) + ' ' + branchLabel(b.id) + ' ' + b.id).toLowerCase();
+      if (q && !blob.includes(q)) return;
+      rows.push({ branchId: b.id, item, inn: x.inn, out: x.out, bal: x.bal });
+    });
+  });
+  return rows;
+}
+
 function viewStock() {
   const branch = effectiveBranch();
   const today = todayISO();
   const scoped = state.records.filter(r => !branch || r.branchId === branch);
   const todayCount = scoped.filter(r => r.date === today).length;
-  const map = stockMap(branch);
-  const values = orderedItems().map(item => map[item]).filter(Boolean);
   const pressure = pressureCounts(branch);
-  const low = pressure.low;
-  const short = pressure.short;
-  const q = state.stockQ.trim().toLowerCase();
-  const cards = values.filter(x => {
-    if (!q) return true;
-    return (x.item + ' ' + itemLabel(x.item) + ' ' + itemSub(x.item)).toLowerCase().includes(q);
-  });
-  let body;
-  if (isAdmin() && !branch) {
-    body = matrixHtml();
-  } else {
-    body = '<div class="item-grid">' + cards.map(cardHtml).join('') + '</div>';
-    if (!cards.length) body += '<p class="empty">' + esc(t('noRecords')) + '</p>';
-  }
+  const rows = stockReportRows();
+  const showBranch = !branch;
+  const branchName = branch ? branchLabel(branch) : t('allBranches');
+  const itemOptions = '<option value="">' + esc(t('allItems')) + '</option>' + orderedItems().map(item =>
+    '<option value="' + esc(item) + '"' + (state.stockItem === item ? ' selected' : '') + '>' + esc(itemLabel(item)) + '</option>'
+  ).join('');
+  let inn = 0;
+  let out = 0;
+  let bal = 0;
+  const body = rows.map((r, i) => {
+    inn += r.inn;
+    out += r.out;
+    bal += r.bal;
+    const kind = tone(r.bal);
+    const tagKey = kind === 'ok' ? 'inHand' : kind;
+    return '<tr class="is-' + kind + '">' +
+      '<td class="num">' + (i + 1) + '</td>' +
+      (showBranch ? '<td class="left">' + esc(branchLabel(r.branchId)) + '<div class="who num">' + esc(r.branchId) + '</div></td>' : '') +
+      '<td class="left"><button type="button" class="linkish" data-action="open-item" data-item="' + esc(r.item) + '"><b>' + esc(itemLabel(r.item)) + '</b></button>' +
+        (itemSub(r.item) ? '<div class="who">' + esc(itemSub(r.item)) + '</div>' : '') + '</td>' +
+      '<td class="num">' + num(r.inn) + '</td>' +
+      '<td class="num">' + num(r.out) + '</td>' +
+      '<td class="num ' + (r.bal < 0 ? 'neg' : (r.bal > 0 && r.bal <= 5 ? 'low' : '')) + '">' + num(r.bal) + '</td>' +
+      '<td class="status-cell"><span class="tag ' + kind + '">' + esc(t(tagKey)) + '</span></td>' +
+    '</tr>';
+  }).join('');
+  const totalRow = rows.length
+    ? '<tr class="total-row"><td></td>' +
+        (showBranch ? '<td></td>' : '') +
+        '<td class="left"><b>' + esc(t('total')) + '</b></td>' +
+        '<td class="num">' + num(inn) + '</td>' +
+        '<td class="num">' + num(out) + '</td>' +
+        '<td class="num ' + (bal < 0 ? 'neg' : '') + '">' + num(bal) + '</td>' +
+        '<td></td></tr>'
+    : '';
   const note = !state.hideSampleNote && scoped.some(r => r.sample)
-    ? '<div class="banner"><span>' + esc(t('sampleNote')) + '</span><button type="button" class="btn tiny ghost" data-action="dismiss-sample">' + esc(t('dismiss')) + '</button></div>'
+    ? '<div class="banner no-print"><span>' + esc(t('sampleNote')) + '</span><button type="button" class="btn tiny ghost" data-action="dismiss-sample">' + esc(t('dismiss')) + '</button></div>'
     : '';
   const mismatch = state.pendingNote
-    ? '<div class="banner"><span>' + esc(state.pendingNote) + '</span><button type="button" class="btn tiny ghost" data-action="dismiss-note">' + esc(t('dismiss')) + '</button></div>'
+    ? '<div class="banner no-print"><span>' + esc(state.pendingNote) + '</span><button type="button" class="btn tiny ghost" data-action="dismiss-note">' + esc(t('dismiss')) + '</button></div>'
     : '';
+  const summary = t('todayEntries') + ' ' + num(todayCount) + ' · ' + t('lowStock') + ' ' + num(pressure.low) + ' · ' + t('shortStock') + ' ' + num(pressure.short) + ' · ' + t('itemCount') + ' ' + num(rows.length);
   return mismatch + note +
-    '<p class="muted" style="margin-top:0">' + esc(greeting()) + ', ' + esc(whoName()) + ' · ' + esc(branch ? branchLabel(branch) : t('allBranches')) + '</p>' +
-    '<section class="stats">' +
-      stat(t('todayEntries'), todayCount, '') +
-      stat(t('lowStock'), low, low ? 'warn' : '') +
-      stat(t('shortStock'), short, short ? 'alert' : '') +
-      stat(t('itemCount'), values.length, '') +
-    '</section>' +
-    (isAdmin() && !branch ? '<p class="hint">' + esc(t('matrixHint')) + '</p>' : '<input class="search-inline" id="stock-q" placeholder="' + esc(t('searchItems')) + '" value="' + esc(state.stockQ) + '">') +
-    body +
-    '<p class="hint">' + esc(t('footer')) + '</p>';
+    '<section class="panel" id="print-area">' +
+      '<div class="print-head">' +
+        '<p class="eyebrow">BIMS</p><h1>' + esc(t('org')) + '</h1>' +
+        '<p>' + esc(t('stockTitle')) + ' · ' + esc(branchName) + '</p>' +
+        '<p>' + esc(formatDate(today)) + '</p>' +
+        '<p>' + esc(t('printedBy')) + ': ' + esc(state.user.email) + '</p>' +
+      '</div>' +
+      '<div class="view-head no-print"><div><h2 class="sheet-title">' + esc(t('stockTitle')) + '</h2>' +
+        '<p class="muted">' + esc(greeting()) + ', ' + esc(whoName()) + ' · ' + esc(branchName) + '</p>' +
+        '<p class="muted">' + esc(summary) + '</p></div>' +
+        '<div class="actions"><button type="button" class="btn ghost small" data-action="print">' + esc(t('print')) + '</button>' +
+        '<button type="button" class="btn ghost small" data-action="export-stock">' + esc(t('export')) + '</button></div></div>' +
+      '<div class="filters stock-filters no-print">' +
+        '<select id="stock-item" aria-label="' + esc(t('item')) + '">' + itemOptions + '</select>' +
+        '<input id="stock-q" placeholder="' + esc(t('searchItems')) + '" value="' + esc(state.stockQ) + '">' +
+      '</div>' +
+      (rows.length
+        ? '<div class="table-wrap"><table class="stock-table"><thead><tr>' +
+            '<th>' + esc(t('serial')) + '</th>' +
+            (showBranch ? '<th class="left">' + esc(t('branch')) + '</th>' : '') +
+            '<th class="left">' + esc(t('item')) + '</th>' +
+            '<th>' + esc(t('inQty')) + '</th><th>' + esc(t('outQty')) + '</th><th>' + esc(t('balance')) + '</th><th>' + esc(t('status')) + '</th>' +
+          '</tr></thead><tbody>' + body + totalRow + '</tbody></table></div>'
+        : '<p class="empty">' + esc(t('noRecords')) + '</p>') +
+      '<p class="hint no-print">' + esc(t('stockHelp')) + '</p>' +
+    '</section>';
 }
 
 function whoName() {
@@ -1558,6 +1626,17 @@ function bind() {
       });
       return;
     }
+    if (action === 'export-stock') {
+      const rows = stockReportRows();
+      const header = ['Branch', 'Item', 'In', 'Out', 'Balance', 'Status'];
+      const lines = ['\uFEFF' + header.join(',')];
+      rows.forEach(r => {
+        const kind = tone(r.bal);
+        lines.push([branchLabel(r.branchId), itemLabel(r.item), r.inn, r.out, r.bal, t(kind === 'ok' ? 'inHand' : kind)].map(csvEscape).join(','));
+      });
+      download('bims-stock.csv', lines.join('\n'));
+      return;
+    }
     if (action === 'export-book') {
       download('bims-register.csv', recordsToCsv(filteredRecords()));
       return;
@@ -1731,6 +1810,7 @@ function bind() {
       renderView();
       return;
     }
+    if (id === 'stock-item') { state.stockItem = e.target.value; renderView(); return; }
     if (id === 'stock-q') { state.stockQ = e.target.value; return; }
     if (id === 'reg-item') { state.regItem = e.target.value; renderView(); return; }
     if (id === 'reg-from') { state.regFrom = e.target.value; renderView(); return; }

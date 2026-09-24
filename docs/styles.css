@@ -470,6 +470,24 @@ input:focus, select:focus, textarea:focus {
 .qty-out { color: var(--clay); font-weight: 700; }
 .row-actions { display: flex; gap: 6px; justify-content: flex-end; }
 
+.stock-table button.linkish {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+.stock-table .status-cell { text-align: center; }
+.stock-table tr.total-row td {
+  font-weight: 700;
+  background: #f3eee4;
+  border-top: 2px solid #e4d6c4;
+}
+.stock-table tr.is-short td:first-child { box-shadow: inset 3px 0 0 var(--danger); }
+.stock-table tr.is-low td:first-child { box-shadow: inset 3px 0 0 var(--gold); }
+.stock-table tr.is-empty td:first-child { box-shadow: inset 3px 0 0 #c8bba8; }
+.stock-filters { grid-template-columns: 1fr 1.4fr; }
 .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
 table { width: 100%; border-collapse: collapse; min-width: 640px; }
 th, td { padding: 9px 10px; border-bottom: 1px solid #f0e6d8; text-align: right; vertical-align: top; }
