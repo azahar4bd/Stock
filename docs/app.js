@@ -1099,6 +1099,7 @@ function viewEntry() {
         field(t('item'), '<select name="itemName" id="item-select" required>' + itemOptions + '</select>') +
         field(t('chalan'), '<input name="chalanNo" value="' + esc(d.chalanNo || '') + '" placeholder="HO-0912">') +
       '</div>' +
+      '<div class="live-bal" id="live-balance"><span>' + esc(t('currentBal')) + '</span><strong>—</strong></div>' +
       '<div class="flow">' +
         '<div class="flow-box in"><h3>' + esc(t('receive')) + '</h3>' +
           field(t('fromWho'), '<input name="fromVal" list="from-list" value="' + esc(d.fromVal || '') + '" placeholder="' + esc(state.lang === 'bn' ? 'হেড অফিস / প্রারম্ভিক স্থিতি' : 'Head office / Opening') + '">') +
