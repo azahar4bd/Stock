@@ -144,6 +144,11 @@ async function ensureNeon() {
 
 async function ensureSite() {
   const wanted = 'bkf-bims-stock';
+  const knownId = 'ddfd8828-9a3b-4cd9-a053-eb5dd32d5546';
+  try {
+    const existing = await netlifyApi('/sites/' + knownId);
+    if (existing && existing.id) return existing;
+  } catch { /* create or find by name */ }
   let site = null;
   try {
     site = await netlifyApi('/sites', { method: 'POST', body: { name: wanted } });
@@ -165,27 +170,28 @@ async function ensureSite() {
 
 async function setEnv(site, key, value) {
   const account = site.account_id || site.account_slug;
-  const payload = {
-    key,
-    scopes: ['functions', 'runtime'],
-    values: [{ context: 'all', value }]
-  };
   const query = '?site_id=' + encodeURIComponent(site.id);
-  try {
-    await netlifyApi('/accounts/' + account + '/env' + query, {
-      method: 'POST',
-      body: [payload]
-    });
-  } catch (err) {
+  const plain = { key, values: [{ context: 'all', value }] };
+  const attempts = [
+    { method: 'POST', path: '/accounts/' + account + '/env' + query, body: [plain] },
+    { method: 'PUT', path: '/accounts/' + account + '/env/' + encodeURIComponent(key) + query, body: plain },
+    { method: 'POST', path: '/sites/' + site.id + '/env', body: plain }
+  ];
+  let last = '';
+  for (const attempt of attempts) {
     try {
-      await netlifyApi('/accounts/' + account + '/env/' + encodeURIComponent(key) + query, {
-        method: 'PUT',
-        body: payload
-      });
-    } catch (updateErr) {
-      fail(err.message + ' | ' + updateErr.message);
+      await netlifyApi(attempt.path, { method: attempt.method, body: attempt.body });
+      return;
+    } catch (err) {
+      last = err.message;
     }
   }
+  const cli = spawnSync('npx', ['--yes', 'netlify-cli', 'env:set', key, value, '--site', site.id], {
+    env: Object.assign({}, process.env, { CI: '1' }),
+    encoding: 'utf8'
+  });
+  if (cli.status === 0) return;
+  fail('could not set ' + key + ': ' + last + ' | ' + redact((cli.stdout || '') + (cli.stderr || '')).slice(-500));
 }
 
 function deploySite(siteId) {
