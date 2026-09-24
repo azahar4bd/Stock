@@ -452,6 +452,31 @@ input:focus, select:focus, textarea:focus {
   margin-bottom: 12px;
 }
 .live-bal strong { font-family: var(--num); font-size: 22px; }
+.entry-pairs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 10px;
+}
+.entry-pairs > label { margin: 0; }
+.entry-pairs .live-bal {
+  margin: 0;
+  min-height: 46px;
+  justify-content: flex-start;
+  background: #fff;
+  border: 1px solid #d9ccba;
+}
+.entry-filters {
+  display: grid;
+  grid-template-columns: minmax(108px, 1fr) minmax(108px, 1fr) minmax(120px, 1.3fr);
+  gap: 8px;
+  margin: 0 0 12px;
+  align-items: end;
+  overflow-x: auto;
+}
+.entry-filters label { margin: 0; font-size: 13px; }
+.entry-filters input, .entry-filters select { padding: 8px 6px; font-size: 13px; }
+.entry-table { min-width: 760px; }
+.entry-table .row-actions { white-space: nowrap; }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 .edit-flag {
   background: #f8efe0;

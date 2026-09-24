@@ -150,7 +150,7 @@ const I18N = {
     toQty: 'বিতরণ পরিমাণ',
     receive: 'গ্রহণ',
     issue: 'বিতরণ',
-    currentBal: 'এই আইটেমের বর্তমান স্থিতি',
+    currentBal: 'বর্তমান স্থিতি',
     save: 'সংরক্ষণ',
     saving: 'সংরক্ষণ হচ্ছে…',
     update: 'আপডেট',
@@ -308,7 +308,7 @@ const I18N = {
     toQty: 'Qty out',
     receive: 'Received',
     issue: 'Issued',
-    currentBal: 'Current balance of this item',
+    currentBal: 'Current balance',
     save: 'Save',
     saving: 'Saving…',
     update: 'Update',
@@ -1088,27 +1088,21 @@ function viewEntry() {
   )).join('');
   const lists = datalists();
   return '<section class="panel">' +
-    '<div class="view-head"><div><h2 class="sheet-title">' + esc(editing ? t('editTitle') : t('entryTitle')) + '</h2><p class="muted">' + esc(t('entryHelp')) + '</p></div></div>' +
+    '<div class="view-head"><div><h2 class="sheet-title">' + esc(editing ? t('editTitle') : t('entryTitle')) + '</h2></div></div>' +
     (editing ? '<div class="edit-flag">' + esc(t('editTitle')) + ' · <span class="num">' + esc(d.id) + '</span></div>' : '') +
     '<form id="entry-form" autocomplete="off">' +
       '<input type="hidden" name="id" value="' + esc(d.id || '') + '">' +
       '<input type="hidden" name="branchId" value="' + esc(d.branchId || '') + '">' +
       '<input type="hidden" name="srNo" value="' + esc(d.srNo || '') + '">' +
-      field(t('date'), '<input type="date" name="date" required value="' + esc(d.date || '') + '">') +
-      '<div class="row-2">' +
+      '<div class="entry-pairs">' +
         field(t('item'), '<select name="itemName" id="item-select" required>' + itemOptions + '</select>') +
+        field(t('date'), '<input type="date" name="date" required value="' + esc(d.date || '') + '">') +
         field(t('chalan'), '<input name="chalanNo" value="' + esc(d.chalanNo || '') + '" placeholder="HO-0912">') +
-      '</div>' +
-      '<div class="live-bal" id="live-balance"><span>' + esc(t('currentBal')) + '</span><strong>—</strong></div>' +
-      '<div class="flow">' +
-        '<div class="flow-box in"><h3>' + esc(t('receive')) + '</h3>' +
-          field(t('fromWho'), '<input name="fromVal" list="from-list" value="' + esc(d.fromVal || '') + '" placeholder="' + esc(state.lang === 'bn' ? 'হেড অফিস / প্রারম্ভিক স্থিতি' : 'Head office / Opening') + '">') +
-          field(t('fromQty'), '<input name="fromAmt" type="number" min="0" step="any" inputmode="decimal" value="' + esc(d.fromAmt || '') + '">') +
-        '</div>' +
-        '<div class="flow-box out"><h3>' + esc(t('issue')) + '</h3>' +
-          field(t('toWhom'), '<input name="saleVal" list="sale-list" value="' + esc(d.saleVal || '') + '" placeholder="' + esc(state.lang === 'bn' ? 'কেন্দ্র / ফিল্ড অফিসার' : 'Center / Field officer') + '">') +
-          field(t('toQty'), '<input name="saleAmt" type="number" min="0" step="any" inputmode="decimal" value="' + esc(d.saleAmt || '') + '">') +
-        '</div>' +
+        '<label>' + esc(t('currentBal')) + '<div class="live-bal" id="live-balance"><strong>—</strong></div></label>' +
+        field(t('fromWho'), '<input name="fromVal" list="from-list" value="' + esc(d.fromVal || '') + '" placeholder="' + esc(state.lang === 'bn' ? 'হেড অফিস / প্রারম্ভিক স্থিতি' : 'Head office / Opening') + '">') +
+        field(t('fromQty'), '<input name="fromAmt" type="number" min="0" step="any" inputmode="decimal" value="' + esc(d.fromAmt || '') + '">') +
+        field(t('toWhom'), '<input name="saleVal" list="sale-list" value="' + esc(d.saleVal || '') + '" placeholder="' + esc(state.lang === 'bn' ? 'কেন্দ্র / ফিল্ড অফিসার' : 'Center / Field officer') + '">') +
+        field(t('toQty'), '<input name="saleAmt" type="number" min="0" step="any" inputmode="decimal" value="' + esc(d.saleAmt || '') + '">') +
       '</div>' +
       lists +
       '<p class="form-error" id="form-error"></p>' +
@@ -1116,7 +1110,51 @@ function viewEntry() {
         '<button class="btn" type="submit">' + esc(editing ? t('update') : t('save')) + '</button>' +
         '<button class="btn ghost" type="button" data-action="reset-entry">' + esc(editing ? t('cancelEdit') : t('reset')) + '</button>' +
       '</div>' +
-    '</form></section>';
+    '</form></section>' + entryTable();
+}
+
+function entryTable() {
+  const rows = filteredRecords();
+  const showBranch = !effectiveBranch();
+  const itemOptions = '<option value="">' + esc(t('allItems')) + '</option>' + orderedItems().map(item =>
+    '<option value="' + esc(item) + '"' + (state.regItem === item ? ' selected' : '') + '>' + esc(itemLabel(item)) + '</option>'
+  ).join('');
+  const body = rows.map(r =>
+    '<tr>' +
+      '<td class="left">' + esc(formatDate(r.date)) + '</td>' +
+      (showBranch ? '<td class="left">' + esc(branchLabel(r.branchId)) + '</td>' : '') +
+      '<td class="left">' + esc(itemLabel(r.itemName)) + '</td>' +
+      '<td class="num">' + esc(r.chalanNo || '—') + '</td>' +
+      '<td class="left">' + esc(r.fromVal || '—') + '</td>' +
+      '<td class="num qty-in">' + (r.fromAmt ? num(r.fromAmt) : '—') + '</td>' +
+      '<td class="left">' + esc(r.saleVal || '—') + '</td>' +
+      '<td class="num qty-out">' + (r.saleAmt ? num(r.saleAmt) : '—') + '</td>' +
+      '<td class="row-actions">' +
+        '<button type="button" class="btn tiny ghost" data-action="edit" data-id="' + esc(r.id) + '">' + esc(t('edit')) + '</button>' +
+        '<button type="button" class="btn tiny danger" data-action="delete" data-id="' + esc(r.id) + '">' + esc(t('delete')) + '</button>' +
+      '</td>' +
+    '</tr>'
+  ).join('');
+  return '<section class="panel">' +
+    '<div class="entry-filters">' +
+      '<label>' + esc(t('fromDate')) + '<input id="reg-from" type="date" value="' + esc(state.regFrom) + '"></label>' +
+      '<label>' + esc(t('toDate')) + '<input id="reg-to" type="date" value="' + esc(state.regTo) + '"></label>' +
+      '<label>' + esc(t('item')) + '<select id="reg-item">' + itemOptions + '</select></label>' +
+    '</div>' +
+    (rows.length
+      ? '<div class="table-wrap"><table class="entry-table"><thead><tr>' +
+          '<th class="left">' + esc(t('date')) + '</th>' +
+          (showBranch ? '<th class="left">' + esc(t('branch')) + '</th>' : '') +
+          '<th class="left">' + esc(t('item')) + '</th>' +
+          '<th>' + esc(t('chalan')) + '</th>' +
+          '<th class="left">' + esc(t('fromWho')) + '</th>' +
+          '<th>' + esc(t('fromQty')) + '</th>' +
+          '<th class="left">' + esc(t('toWhom')) + '</th>' +
+          '<th>' + esc(t('toQty')) + '</th>' +
+          '<th></th>' +
+        '</tr></thead><tbody>' + body + '</tbody></table></div>'
+      : '<p class="empty">' + esc(t('noRecords')) + '</p>') +
+  '</section>';
 }
 
 function field(label, control) {
@@ -1458,7 +1496,6 @@ async function doSave(form, force) {
     const wasEdit = !!data.id;
     state.draft = blankDraft();
     toast(wasEdit ? t('updated') : t('saved'));
-    if (wasEdit) state.view = 'book';
     renderShell();
     renderView();
     if (result && result.id && !wasEdit) {
