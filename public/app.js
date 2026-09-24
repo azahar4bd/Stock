@@ -1052,10 +1052,10 @@ function viewStock() {
       '</div>' +
       (rows.length
         ? '<div class="table-wrap"><table class="stock-table"><thead><tr>' +
-            '<th>' + esc(t('serial')) + '</th>' +
-            (showBranch ? '<th class="left">' + esc(t('branch')) + '</th>' : '') +
-            '<th class="left">' + esc(t('item')) + '</th>' +
-            '<th>' + esc(t('inQty')) + '</th><th>' + esc(t('outQty')) + '</th><th>' + esc(t('balance')) + '</th><th>' + esc(t('status')) + '</th>' +
+            th(t('serial'), 'c-num') +
+            (showBranch ? th(t('branch'), 'left') : '') +
+            th(t('item'), 'left') +
+            th(t('inQty'), 'c-num') + th(t('outQty'), 'c-num') + th(t('balance'), 'c-num') + th(t('status'), 'c-num') +
           '</tr></thead><tbody>' + body + totalRow + '</tbody></table></div>'
         : '<p class="empty">' + esc(t('noRecords')) + '</p>') +
       '<p class="hint no-print">' + esc(t('stockHelp')) + '</p>' +
@@ -1092,7 +1092,7 @@ function matrixHtml() {
     }).join('');
     return '<tr><td class="left"><b>' + esc(itemLabel(item)) + '</b><div class="who">' + esc(itemSub(item)) + '</div></td>' + cells + '</tr>';
   }).join('');
-  return '<div class="table-wrap"><table class="matrix"><thead><tr><th class="left">' + esc(t('item')) + '</th>' + head + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+  return '<div class="table-wrap"><table class="matrix"><thead><tr>' + th(t('item'), 'left') + head + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
 }
 
 function viewEntry() {
@@ -1162,15 +1162,15 @@ function entryTable() {
     '<section class="panel entry-table-panel">' +
       (rows.length
         ? '<div class="table-wrap"><table class="entry-table"><thead><tr>' +
-            '<th class="left">' + esc(t('date')) + '</th>' +
-            (showBranch ? '<th class="left">' + esc(t('branch')) + '</th>' : '') +
-            '<th class="left">' + esc(t('item')) + '</th>' +
-            '<th>' + esc(t('chalan')) + '</th>' +
-            '<th class="left">' + esc(t('fromWho')) + '</th>' +
-            '<th>' + esc(t('fromQty')) + '</th>' +
-            '<th class="left">' + esc(t('toWhom')) + '</th>' +
-            '<th>' + esc(t('toQty')) + '</th>' +
-            '<th></th>' +
+            th(t('date'), 'left c-date') +
+            (showBranch ? th(t('branch'), 'left') : '') +
+            th(t('item'), 'left') +
+            th(t('chalan')) +
+            th(t('fromWho'), 'left') +
+            th(t('fromQty'), 'c-num') +
+            th(t('toWhom'), 'left') +
+            th(t('toQty'), 'c-num') +
+            '<th class="c-act"></th>' +
           '</tr></thead><tbody>' + body + '</tbody></table></div>'
         : '<p class="empty">' + esc(state.records.length ? t('noRecords') : t('noEntryYet')) +
             (state.records.length ? ' <button type="button" class="btn tiny ghost" data-action="clear-entry-filters">' + esc(t('clearFilters')) + '</button>' : '') +
@@ -1179,6 +1179,12 @@ function entryTable() {
   '</div>';
 }
 
+function thText(label) {
+  return String(label || '').split(/\s+/).filter(Boolean).map(esc).join('<br>');
+}
+function th(label, cls) {
+  return '<th' + (cls ? ' class="' + cls + '"' : '') + '>' + thText(label) + '</th>';
+}
 function field(label, control) {
   return '<label>' + esc(label) + control + '</label>';
 }
@@ -1234,7 +1240,7 @@ function viewBook() {
   const itemOptions = '<option value="">' + esc(t('allItems')) + '</option>' + orderedItems().map(item =>
     '<option value="' + esc(item) + '"' + (state.regItem === item ? ' selected' : '') + '>' + esc(itemLabel(item)) + '</option>'
   ).join('');
-  const head = [t('date'), t('branch'), t('item'), t('chalan'), t('receive'), t('issue'), ''].map(h => '<span>' + esc(h) + '</span>').join('');
+  const head = [t('date'), t('branch'), t('item'), t('chalan'), t('receive'), t('issue'), ''].map(h => '<span>' + thText(h) + '</span>').join('');
   const body = rows.length
     ? rows.map(recordRow).join('')
     : '<p class="empty">' + esc(t('noRecords')) + '</p>';
@@ -1319,9 +1325,9 @@ function viewReport() {
       '<label>' + esc(t('fromDate')) + '<input id="rep-from" type="date" value="' + esc(state.repFrom) + '"></label>' +
       '<label>' + esc(t('toDate')) + '<input id="rep-to" type="date" value="' + esc(state.repTo) + '"></label>' +
     '</div>' +
-    (rows.length ? '<div class="table-wrap"><table><thead><tr>' +
-      (showBranch ? '<th class="left">' + esc(t('branch')) + '</th>' : '') +
-      '<th class="left">' + esc(t('item')) + '</th><th>' + esc(t('opening')) + '</th><th>' + esc(t('received')) + '</th><th>' + esc(t('issued')) + '</th><th>' + esc(t('closing')) + '</th>' +
+    (rows.length ? '<div class="table-wrap"><table class="report-table"><thead><tr>' +
+      (showBranch ? th(t('branch'), 'left') : '') +
+      th(t('item'), 'left') + th(t('opening'), 'c-num') + th(t('received'), 'c-num') + th(t('issued'), 'c-num') + th(t('closing'), 'c-num') +
       '</tr></thead><tbody>' + body + '</tbody></table></div>' : '<p class="empty">' + esc(t('noReport')) + '</p>') +
     '<div class="signs print-only"><div>' + esc(t('prepared')) + '</div><div>' + esc(t('checked')) + '</div><div>' + esc(t('manager')) + '</div></div>' +
   '</section>';
