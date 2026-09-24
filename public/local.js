@@ -10,20 +10,12 @@
   const DEFAULT_PASSWORD = 'bkf2026';
 
   const DEFAULT_BRANCHES = [
-    ['B014', 'Gobra', 'Active'],
-    ['B027', 'Narail', 'Active'],
-    ['B020', 'Noldi', 'Active'],
-    ['B013', 'Lohagora', 'Active'],
-    ['B019', 'Mahajon', 'Active']
+    ['B014', 'Gobra', 'Active']
   ];
 
   const DEFAULT_USERS = [
-    ['azahar4bd@gmail.com', 'B014', 'Gobra', 'Admin', 'Active'],
-    ['bkfgobra014@gmail.com', 'B014', 'Gobra', 'User', 'Active'],
-    ['bkfnorailsador027@gmail.com', 'B027', 'Narail', 'User', 'Active'],
-    ['bkfnoldi020@gmail.com', 'B020', 'Noldi', 'User', 'Active'],
-    ['bkflohagora013@gmail.com', 'B013', 'Lohagora', 'User', 'Active'],
-    ['bkfmahajon019@gmail.com', 'B019', 'Mahajon', 'User', 'Active']
+    ['azahar4bd@gmail.com', 'B014', 'Gobra', 'Admin', 'Active', 'আজহার'],
+    ['bkfgobra014@gmail.com', 'B014', 'Gobra', 'User', 'Active', 'গোবরা']
   ];
 
   const DEFAULT_ITEMS = [
@@ -62,11 +54,22 @@
   function publicUser(user) {
     return {
       email: user.email,
+      name: user.name || '',
+      userId: user.userId || '',
       branchId: user.branchId,
       branchName: user.branchName,
       role: user.role,
       status: user.status
     };
+  }
+
+  function signupEmail(userId, branchId) {
+    const raw = String(userId || '').trim().toLowerCase();
+    if (/^\S+@\S+\.\S+$/.test(raw)) return raw;
+    const slug = raw.replace(/[^a-z0-9]/g, '');
+    const digits = String(branchId || '').replace(/\D/g, '');
+    if (!slug) fail('NEED_USER');
+    return 'bkf' + slug + digits + '@gmail.com';
   }
 
   function ensureSuperAdmin(db) {
@@ -100,17 +103,7 @@
       ['B014', 'bkfgobra014@gmail.com', '2026-09-15', 'সদস্য ভর্তি ফরম', 'G-18', '', 0, 'ফিল্ড অফিসার', 60, '4'],
       ['B014', 'bkfgobra014@gmail.com', '2026-09-10', 'ব্যাগ', 'HO-0922', 'হেড অফিস', 15, '', 0, '5'],
       ['B014', 'bkfgobra014@gmail.com', '2026-09-18', 'ব্যাগ', 'G-21', '', 0, 'কেন্দ্র-২', 4, '6'],
-      ['B014', 'bkfgobra014@gmail.com', today, 'ক্যাশ ফিগার', 'G-22', 'হেড অফিস', 30, 'কেন্দ্র-১', 6, '7'],
-      ['B027', 'bkfnorailsador027@gmail.com', '2026-09-03', 'ঋণ চুক্তিপত্র', 'HO-0930', 'হেড অফিস', 80, '', 0, '1'],
-      ['B027', 'bkfnorailsador027@gmail.com', '2026-09-12', 'ঋণ চুক্তিপত্র', 'N-12', '', 0, 'কেন্দ্র-৪', 25, '2'],
-      ['B027', 'bkfnorailsador027@gmail.com', '2026-09-06', 'ক্যাশ ফিগার', 'HO-0933', 'হেড অফিস', 40, '', 0, '3'],
-      ['B027', 'bkfnorailsador027@gmail.com', '2026-09-19', 'ক্যাশ ফিগার', 'N-19', '', 0, 'ফিল্ড অফিসার', 36, '4'],
-      ['B020', 'bkfnoldi020@gmail.com', '2026-09-04', 'কেন্দ্র পাস বই', 'HO-0940', 'হেড অফিস', 30, 'কেন্দ্র-১', 10, '1'],
-      ['B020', 'bkfnoldi020@gmail.com', '2026-09-09', 'সদস্য হাজিরা খাতা', 'HO-0944', 'হেড অফিস', 25, '', 0, '2'],
-      ['B013', 'bkflohagora013@gmail.com', '2026-09-07', 'সঞ্চয় ফেরত', 'HO-0951', 'হেড অফিস', 60, 'স্টাফ', 15, '1'],
-      ['B013', 'bkflohagora013@gmail.com', '2026-09-16', 'ব্যাগ', 'L-16', 'হেড অফিস', 2, 'কেন্দ্র-৩', 5, '2'],
-      ['B019', 'bkfmahajon019@gmail.com', '2026-09-11', 'passbook', 'HO-0960', 'হেড অফিস', 40, 'কেন্দ্র-১', 5, '1'],
-      ['B019', 'bkfmahajon019@gmail.com', '2026-09-20', 'ব্যাগ', 'M-20', 'হেড অফিস', 8, '', 0, '2']
+      ['B014', 'bkfgobra014@gmail.com', today, 'ক্যাশ ফিগার', 'G-22', 'হেড অফিস', 30, 'কেন্দ্র-১', 6, '7']
     ];
     db.records = rows.map(function (r, i) {
       return {
@@ -143,16 +136,64 @@
           branchName: r[2],
           role: r[3],
           status: r[4],
+          name: r[5] || '',
           password: DEFAULT_PASSWORD
         };
       }),
       items: DEFAULT_ITEMS.slice(),
       records: [],
-      sessions: {}
+      sessions: {},
+      prunedToGobra: true
     };
     seedSamples(db);
     ensureSuperAdmin(db);
     return db;
+  }
+
+  function pruneToGobra(db) {
+    if (!db || db.prunedToGobra) return false;
+    if (!db.branches.some(function (b) { return b.id === 'B014'; })) {
+      db.branches.unshift({ id: 'B014', name: 'Gobra', status: 'Active', createdAt: '2026-01-01' });
+    }
+    db.branches = db.branches.filter(function (b) { return b.id === 'B014'; });
+    db.users = (db.users || []).filter(function (u) { return u.email === SUPER || u.branchId === 'B014'; });
+    db.records = (db.records || []).filter(function (r) { return r.branchId === 'B014'; });
+    db.prunedToGobra = true;
+    ensureSuperAdmin(db);
+    return true;
+  }
+
+  function signup(db, body) {
+    body = body || {};
+    const branchName = clip(body.branchName, 80);
+    const branchId = clip(body.branchCode || body.branchId, 40).toUpperCase();
+    const userName = clip(body.userName, 80);
+    const userId = clip(body.userId, 60);
+    const password = String(body.password || '');
+    const confirm = String(body.confirmPassword || body.confirm || '');
+    if (!branchName || !branchId) fail('NEED_BRANCH');
+    if (!/^[A-Z0-9_-]+$/.test(branchId)) fail('BAD_BRANCH_ID');
+    if (db.branches.some(function (b) { return b.id === branchId; })) fail('BRANCH_EXISTS');
+    if (!userName) fail('NEED_NAME');
+    if (!userId) fail('NEED_USER');
+    const email = signupEmail(userId, branchId);
+    if (!/^\S+@\S+\.\S+$/.test(email)) fail('BAD_EMAIL');
+    if (db.users.some(function (u) { return u.email === email; })) fail('USER_EXISTS');
+    if (password.length < 4) fail('PASSWORD_SHORT');
+    if (password !== confirm) fail('PASSWORD_MISMATCH');
+    db.branches.push({ id: branchId, name: branchName, status: 'Active', createdAt: todayISO() });
+    db.users.push({
+      email: email,
+      name: userName,
+      userId: userId,
+      branchId: branchId,
+      branchName: branchName,
+      role: 'User',
+      status: 'Active',
+      password: password
+    });
+    db.prunedToGobra = true;
+    return { message: 'SIGNED_UP', email: email, branchId: branchId, branchName: branchName, userName: userName };
   }
 
   function load() {
@@ -166,6 +207,7 @@
         db.records = db.records || [];
         db.sessions = db.sessions || {};
         ensureSuperAdmin(db);
+        if (pruneToGobra(db)) save(db);
         return db;
       }
     } catch (e) { /* fresh seed */ }
@@ -524,6 +566,12 @@
     const db = load();
 
     if (method === 'GET' && clean === '/api/health') return { ok: true, app: 'BIMS', mode: 'browser' };
+
+    if (method === 'POST' && clean === '/api/signup') {
+      const result = signup(db, body);
+      save(db);
+      return result;
+    }
 
     if (method === 'POST' && clean === '/api/login') {
       const email = clip(body.email, 120).toLowerCase();

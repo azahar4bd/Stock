@@ -81,13 +81,24 @@ const I18N = {
     appName: 'স্টক খাতা',
     org: 'বন্ধু কল্যাণ ফাউন্ডেশন',
     tagline: 'শাখার পাসবুক, ফরম, খাতা ও ব্যাগ — গ্রহণ, বিতরণ, স্থিতি। এক খাতায়।',
-    email: 'অনুমোদিত ইমেইল',
-    password: 'অ্যাপের পাসওয়ার্ড',
+    email: 'ইমেইল',
+    password: 'পাসওয়ার্ড',
     show: 'দেখাও',
     hide: 'লুকাও',
     passwordHint: 'এটা Gmail পাসওয়ার্ড নয়। শুরুর পাসওয়ার্ড',
-    signIn: 'প্রবেশ করুন',
+    signIn: 'লগইন',
     signingIn: 'ঢুকছি…',
+    signUp: 'সাইন আপ',
+    signUpTitle: 'নতুন ব্রাঞ্চ খুলুন',
+    signingUp: 'খুলছি…',
+    branchCode: 'ব্রাঞ্চ কোড',
+    userName: 'ইউজারের নাম',
+    userId: 'ইউজার আইডি',
+    emailAuto: 'লগইন ইমেইল',
+    emailAutoHint: 'ইউজার আইডি থেকে ইমেইল নিজেই তৈরি হবে। এই ইমেইলই লগইন আইডি।',
+    confirmPassword: 'কনফার্ম পাসওয়ার্ড',
+    signupHelp: 'সাইন আপ করলেই নতুন ব্রাঞ্চ ও ইউজার তৈরি হবে।',
+    signedUp: 'নতুন ব্রাঞ্চ খুলেছে। লগইন ইমেইল: {email}',
     quick: 'দ্রুত প্রবেশ',
     adminQuick: 'অ্যাডমিন',
     logout: 'বের হন',
@@ -222,13 +233,24 @@ const I18N = {
     appName: 'Stock Register',
     org: 'Bandhu Kallyan Foundation',
     tagline: 'Passbooks, forms, registers and bags — received, issued, on hand. One book.',
-    email: 'Approved email',
-    password: 'App password',
+    email: 'Email',
+    password: 'Password',
     show: 'Show',
     hide: 'Hide',
     passwordHint: 'Not your Gmail password. Starting password',
-    signIn: 'Sign in',
-    signingIn: 'Signing in…',
+    signIn: 'Log in',
+    signingIn: 'Logging in…',
+    signUp: 'Sign up',
+    signUpTitle: 'Open a new branch',
+    signingUp: 'Opening…',
+    branchCode: 'Branch code',
+    userName: 'User name',
+    userId: 'User ID',
+    emailAuto: 'Login email',
+    emailAutoHint: 'The email is created from the user ID. That email is the login ID.',
+    confirmPassword: 'Confirm password',
+    signupHelp: 'Sign up to open a new branch and its user.',
+    signedUp: 'New branch is open. Login email: {email}',
     quick: 'Quick enter',
     adminQuick: 'Admin',
     logout: 'Sign out',
@@ -394,6 +416,9 @@ const ERR = {
     BAD_BACKUP: 'ব্যাকআপ ফাইল সঠিক নয়।',
     RESTORE_LOCKOUT: 'এই ব্যাকআপে আপনি অ্যাডমিন থাকবেন না, তাই ফেরানো হয়নি।',
     PASSWORD_SHORT: 'পাসওয়ার্ড অন্তত ৪ অক্ষরের হতে হবে।',
+    PASSWORD_MISMATCH: 'পাসওয়ার্ড ও কনফার্ম পাসওয়ার্ড মিলছে না।',
+    NEED_NAME: 'ইউজারের নাম দিন।',
+    NEED_USER: 'ইউজার আইডি দিন। ইংরেজি অক্ষর বা সংখ্যা ব্যবহার করুন।',
     BAD_JSON: 'ডেটা পড়া যায়নি।',
     TOO_LARGE: 'ফাইল অনেক বড়।',
     SERVER: 'সার্ভারে সমস্যা হয়েছে।',
@@ -431,6 +456,9 @@ const ERR = {
     BAD_BACKUP: 'Backup file is not valid.',
     RESTORE_LOCKOUT: 'Restore stopped so you would not lock yourself out.',
     PASSWORD_SHORT: 'Password must be at least 4 characters.',
+    PASSWORD_MISMATCH: 'Password and confirm password do not match.',
+    NEED_NAME: 'Enter the user name.',
+    NEED_USER: 'Enter a user ID using English letters or numbers.',
     BAD_JSON: 'Could not read the data.',
     TOO_LARGE: 'File is too large.',
     SERVER: 'Something went wrong on the server.',
@@ -740,15 +768,33 @@ function renderModal() {
     '</div>';
 }
 
+function previewSignupEmail(userId, branchCode) {
+  const raw = String(userId || '').trim().toLowerCase();
+  if (/^\S+@\S+\.\S+$/.test(raw)) return raw;
+  const slug = raw.replace(/[^a-z0-9]/g, '');
+  const digits = String(branchCode || '').replace(/\D/g, '');
+  if (!slug) return '';
+  return 'bkf' + slug + digits + '@gmail.com';
+}
+
+function bindSignupPreview() {
+  const form = document.getElementById('signup-form');
+  if (!form) return;
+  const paint = () => {
+    const el = document.getElementById('signup-email');
+    if (!el) return;
+    el.textContent = previewSignupEmail(form.userId.value, form.branchCode.value) || '—';
+  };
+  form.userId.addEventListener('input', paint);
+  form.branchCode.addEventListener('input', paint);
+  paint();
+}
+
 function showLogin() {
   document.getElementById('app').classList.add('hidden');
   const root = document.getElementById('login');
   root.classList.remove('hidden');
   const remembered = localStorage.getItem('bims_email') || '';
-  const chips = QUICK.map(pair => {
-    const label = pair[1] === 'adminQuick' ? t('adminQuick') : branchLabel(pair[1]);
-    return '<button type="button" class="chip" data-action="quick" data-email="' + esc(pair[0]) + '">' + esc(label) + '</button>';
-  }).join('');
   root.innerHTML =
     '<div class="login-wrap">' +
       '<section class="brand-panel">' +
@@ -759,35 +805,51 @@ function showLogin() {
           '</div>' +
           '<h1>' + esc(t('appName')) + '</h1>' +
           '<p class="tagline">' + esc(t('tagline')) + '</p>' +
-          '<ul class="stamps">' +
-            Object.keys(BRANCH_STATIC).map(id => '<li><b>' + id + '</b>' + esc(branchLabel(id)) + '</li>').join('') +
-          '</ul>' +
+          '<ul class="stamps"><li><b>B014</b>' + esc(branchLabel('B014')) + '</li></ul>' +
         '</div>' +
         '<p class="brand-foot">Branch Item Management · ' + esc(t('footer')) + '</p>' +
       '</section>' +
       '<section class="login-side">' +
-        '<form class="login-card" id="login-form" autocomplete="on">' +
-          '<p class="eyebrow">BIMS</p>' +
-          '<h1>' + esc(t('appName')) + '</h1>' +
-          '<p class="org">' + esc(t('org')) + '</p>' +
-          '<button class="btn block" type="button" data-action="open-book">খাতা খুলুন</button>' +
-          '<p class="hint">Google লাগবে না। এই বাটনে চাপলেই খাতা খুলবে।</p>' +
-          '<label for="email">' + esc(t('email')) + '</label>' +
-          '<input id="email" name="email" type="email" autocomplete="username" required value="' + esc(remembered) + '">' +
-          '<label for="password">' + esc(t('password')) + '</label>' +
-          '<div class="pass-row">' +
-            '<input id="password" name="password" type="password" autocomplete="current-password" required value="">' +
-            '<button type="button" class="pass-toggle" data-action="toggle-pass">' + esc(t('show')) + '</button>' +
-          '</div>' +
-          '<p class="hint">' + esc(t('passwordHint')) + ' <code>' + DEMO_PASSWORD + '</code></p>' +
-          '<p class="form-error" id="login-error"></p>' +
-          '<button class="btn block" type="submit">' + esc(t('signIn')) + '</button>' +
-          '<p class="hint">' + esc(t('quick')) + '</p>' +
-          '<div class="quick">' + chips + '</div>' +
-          '<div class="actions"><button type="button" class="btn ghost small" data-action="lang">' + esc(t('lang')) + '</button></div>' +
-        '</form>' +
+        '<div class="login-stack">' +
+          '<form class="login-card" id="login-form" autocomplete="on">' +
+            '<p class="eyebrow">BIMS</p>' +
+            '<h1>' + esc(t('appName')) + '</h1>' +
+            '<p class="org">' + esc(t('org')) + '</p>' +
+            '<label for="email">' + esc(t('email')) + '</label>' +
+            '<input id="email" name="email" type="email" autocomplete="username" required value="' + esc(remembered) + '">' +
+            '<label for="password">' + esc(t('password')) + '</label>' +
+            '<div class="pass-row">' +
+              '<input id="password" name="password" type="password" autocomplete="current-password" required value="">' +
+              '<button type="button" class="pass-toggle" data-action="toggle-pass">' + esc(t('show')) + '</button>' +
+            '</div>' +
+            '<p class="form-error" id="login-error"></p>' +
+            '<button class="btn block" type="submit">' + esc(t('signIn')) + '</button>' +
+          '</form>' +
+          '<form class="login-card signup-card" id="signup-form" autocomplete="off">' +
+            '<h2>' + esc(t('signUpTitle')) + '</h2>' +
+            '<p class="hint">' + esc(t('signupHelp')) + '</p>' +
+            '<label for="branchName">' + esc(t('branchName')) + '</label>' +
+            '<input id="branchName" name="branchName" required maxlength="80">' +
+            '<label for="branchCode">' + esc(t('branchCode')) + '</label>' +
+            '<input id="branchCode" name="branchCode" required maxlength="40" autocapitalize="characters" placeholder="B021">' +
+            '<label for="userName">' + esc(t('userName')) + '</label>' +
+            '<input id="userName" name="userName" required maxlength="80">' +
+            '<label for="userId">' + esc(t('userId')) + '</label>' +
+            '<input id="userId" name="userId" required maxlength="60" autocapitalize="none" placeholder="narail">' +
+            '<p class="hint">' + esc(t('emailAuto')) + ': <code id="signup-email">—</code></p>' +
+            '<p class="hint">' + esc(t('emailAutoHint')) + '</p>' +
+            '<label for="signup-password">' + esc(t('password')) + '</label>' +
+            '<input id="signup-password" name="password" type="password" autocomplete="new-password" required minlength="4">' +
+            '<label for="confirmPassword">' + esc(t('confirmPassword')) + '</label>' +
+            '<input id="confirmPassword" name="confirmPassword" type="password" autocomplete="new-password" required minlength="4">' +
+            '<p class="form-error" id="signup-error"></p>' +
+            '<button class="btn block" type="submit">' + esc(t('signUp')) + '</button>' +
+            '<div class="actions"><button type="button" class="btn ghost small" data-action="lang">' + esc(t('lang')) + '</button></div>' +
+          '</form>' +
+        '</div>' +
       '</section>' +
     '</div>';
+  bindSignupPreview();
   document.documentElement.lang = state.lang === 'bn' ? 'bn' : 'en';
   document.title = t('appName') + ' · BIMS';
 }
@@ -1174,7 +1236,7 @@ function adminUsers() {
     '<option value="' + esc(b.id) + '">' + esc(branchLabel(b.id)) + ' · ' + esc(b.id) + '</option>'
   ).join('');
   const rows = state.users.map(u =>
-    '<div class="person"><div class="meta"><b>' + esc(u.email) + '</b><span>' + esc(branchLabel(u.branchId)) + ' · ' + esc(u.branchId) + '</span> ' +
+    '<div class="person"><div class="meta"><b>' + esc(u.name ? u.name + ' · ' + u.email : u.email) + '</b><span>' + esc(branchLabel(u.branchId)) + ' · ' + esc(u.branchId) + '</span> ' +
       '<span class="badge ' + (u.role === 'Admin' ? 'admin' : '') + '">' + esc(u.role) + '</span> ' +
       '<span class="badge ' + (String(u.status).toLowerCase() === 'active' ? '' : 'off') + '">' + esc(String(u.status).toLowerCase() === 'active' ? t('active') : t('inactive')) + '</span></div>' +
       '<div class="ops">' +
@@ -1235,6 +1297,44 @@ function recordsToCsv(rows) {
     ].map(csvEscape).join(','));
   });
   return '\uFEFF' + lines.join('\n');
+}
+
+async function doSignup(form) {
+  const btn = form.querySelector('button[type=submit]');
+  const err = document.getElementById('signup-error');
+  if (err) err.textContent = '';
+  if (form.password.value !== form.confirmPassword.value) {
+    if (err) err.textContent = tErr('PASSWORD_MISMATCH');
+    return;
+  }
+  btn.disabled = true;
+  const old = btn.textContent;
+  btn.textContent = t('signingUp');
+  try {
+    const body = {
+      branchName: form.branchName.value.trim(),
+      branchCode: form.branchCode.value.trim(),
+      userName: form.userName.value.trim(),
+      userId: form.userId.value.trim(),
+      password: form.password.value,
+      confirmPassword: form.confirmPassword.value
+    };
+    const signed = await api('/api/signup', { method: 'POST', body });
+    const data = await api('/api/login', { method: 'POST', body: { email: signed.email, password: body.password } });
+    state.token = data.token;
+    sessionStorage.setItem('bims_token', data.token);
+    localStorage.setItem('bims_email', signed.email);
+    state.linkApplied = false;
+    await refresh();
+    state.draft = null;
+    state.view = 'stock';
+    showApp();
+    toast(t('signedUp').replace('{email}', signed.email));
+  } catch (e) {
+    if (err) err.textContent = tErr(e.message);
+    btn.disabled = false;
+    btn.textContent = old;
+  }
 }
 
 async function doLogin(form) {
@@ -1577,6 +1677,7 @@ function bind() {
     const form = e.target;
     if (!(form instanceof HTMLFormElement)) return;
     if (form.id === 'login-form') { e.preventDefault(); await doLogin(form); return; }
+    if (form.id === 'signup-form') { e.preventDefault(); await doSignup(form); return; }
     if (form.id === 'entry-form') { e.preventDefault(); await doSave(form, false); return; }
     if (form.id === 'branch-form') {
       e.preventDefault();

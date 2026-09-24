@@ -13,8 +13,9 @@ function codeOf(fn) {
 }
 
 const db = s.createFreshDb();
+assert.deepStrictEqual(db.branches.map(b => b.id), ['B014']);
+assert.ok(db.records.every(r => r.branchId === 'B014'));
 const gobra = s.resolveUser(db, 'bkfgobra014@gmail.com');
-const narail = s.resolveUser(db, 'bkfnorailsador027@gmail.com');
 const admin = s.resolveUser(db, 'azahar4bd@gmail.com');
 
 assert.strictEqual(admin.role, 'Admin');
@@ -63,6 +64,9 @@ const own = db.records.find(r => r.id === saved.id);
 assert.strictEqual(own.branchId, 'B014');
 assert.strictEqual(own.createdBy, gobra.email);
 
+s.addBranch(db, admin, 'B027', 'Narail');
+s.addUser(db, admin, 'bkfnorailsador027@gmail.com', 'B027', 'User');
+const narail = s.resolveUser(db, 'bkfnorailsador027@gmail.com');
 const adminSaved = s.saveRecord(db, admin, {
   branchId: 'B027',
   itemName: 'ব্যাগ',
@@ -84,8 +88,8 @@ assert.ok(!gobraData.records.some(r => r.branchId === 'B027'));
 assert.ok(gobraData.records.some(r => r.id === saved.id));
 
 const adminData = s.appData(db, admin);
-assert.ok(adminData.users.length >= 6);
-assert.ok(adminData.records.some(r => r.branchId === 'B027'));
+assert.ok(adminData.users.length >= 3);
+assert.ok(adminData.branches.some(b => b.id === 'B027'));
 assert.ok(!adminData.users.some(u => u.passwordHash));
 
 assert.strictEqual(codeOf(() => s.addBranch(db, gobra, 'B099', 'Test')), 'ADMIN_ONLY');
@@ -103,6 +107,7 @@ s.addUser(db, admin, 'second.admin@bkf.test', 'B014', 'Admin');
 const second = s.resolveUser(db, 'second.admin@bkf.test');
 assert.strictEqual(codeOf(() => s.setUserStatus(db, second, second.email, 'Inactive')), 'SELF_STATUS');
 
+s.addBranch(db, admin, 'B020', 'Noldi');
 db.branches.find(b => b.id === 'B020').status = 'Inactive';
 assert.strictEqual(codeOf(() => s.saveRecord(db, admin, {
   branchId: 'B020', itemName: 'passbook', fromAmt: 1, date: '2026-09-22'
@@ -130,5 +135,56 @@ const foreign = s.saveRecord(db, admin, {
 assert.strictEqual(codeOf(() => s.saveRecord(db, gobra, {
   id: foreign.id, itemName: 'ব্যাগ', fromAmt: 2, date: '2026-09-22'
 })), 'NOT_YOUR_BRANCH');
+
+const signed = s.signup(db, {
+  branchName: 'নতুন শাখা',
+  branchCode: 'B021',
+  userName: 'রহিম',
+  userId: 'rahim',
+  password: 'pass1234',
+  confirmPassword: 'pass1234'
+});
+assert.strictEqual(signed.email, 'bkfrahim021@gmail.com');
+assert.ok(db.branches.some(b => b.id === 'B021' && b.name === 'নতুন শাখা'));
+const signedUser = s.resolveUser(db, signed.email);
+assert.strictEqual(signedUser.branchId, 'B021');
+assert.strictEqual(signedUser.role, 'User');
+assert.strictEqual(s.verifyPassword('pass1234', db.users.find(u => u.email === signed.email).passwordHash), true);
+assert.strictEqual(codeOf(() => s.signup(db, {
+  branchName: 'আবার',
+  branchCode: 'B021',
+  userName: 'করিম',
+  userId: 'karim',
+  password: 'pass1234',
+  confirmPassword: 'pass1234'
+})), 'BRANCH_EXISTS');
+assert.strictEqual(codeOf(() => s.signup(db, {
+  branchName: 'মিলে না',
+  branchCode: 'B022',
+  userName: 'করিম',
+  userId: 'karim',
+  password: 'pass1234',
+  confirmPassword: 'other'
+})), 'PASSWORD_MISMATCH');
+
+const old = s.createFreshDb();
+old.prunedToGobra = false;
+old.branches.push({ id: 'B027', name: 'Narail', status: 'Active', createdAt: '2026-01-02' });
+old.users.push({ email: 'old@bkf.test', branchId: 'B027', branchName: 'Narail', role: 'User', status: 'Active', passwordHash: 'x' });
+old.records.push({ id: 'OLD', branchId: 'B027', itemName: 'ব্যাগ', fromAmt: 1, saleAmt: 0 });
+assert.strictEqual(s.pruneToGobra(old), true);
+assert.deepStrictEqual(old.branches.map(b => b.id), ['B014']);
+assert.ok(!old.users.some(u => u.email === 'old@bkf.test'));
+assert.ok(!old.records.some(r => r.branchId === 'B027'));
+s.signup(old, {
+  branchName: 'রাখা হবে',
+  branchCode: 'B030',
+  userName: 'করিম',
+  userId: 'karim',
+  password: 'pass1234',
+  confirmPassword: 'pass1234'
+});
+assert.strictEqual(s.pruneToGobra(old), false);
+assert.ok(old.branches.some(b => b.id === 'B030'));
 
 console.log('rules ok');

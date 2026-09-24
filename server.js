@@ -20,20 +20,12 @@ const SUPER_ADMIN_EMAIL = 'azahar4bd@gmail.com';
 const DEFAULT_PASSWORD = process.env.BIMS_PASSWORD || 'bkf2026';
 
 const DEFAULT_BRANCHES = [
-  ['B014', 'Gobra', 'Active'],
-  ['B027', 'Narail', 'Active'],
-  ['B020', 'Noldi', 'Active'],
-  ['B013', 'Lohagora', 'Active'],
-  ['B019', 'Mahajon', 'Active']
+  ['B014', 'Gobra', 'Active']
 ];
 
 const DEFAULT_USERS = [
-  ['azahar4bd@gmail.com', 'B014', 'Gobra', 'Admin', 'Active'],
-  ['bkfgobra014@gmail.com', 'B014', 'Gobra', 'User', 'Active'],
-  ['bkfnorailsador027@gmail.com', 'B027', 'Narail', 'User', 'Active'],
-  ['bkfnoldi020@gmail.com', 'B020', 'Noldi', 'User', 'Active'],
-  ['bkflohagora013@gmail.com', 'B013', 'Lohagora', 'User', 'Active'],
-  ['bkfmahajon019@gmail.com', 'B019', 'Mahajon', 'User', 'Active']
+  ['azahar4bd@gmail.com', 'B014', 'Gobra', 'Admin', 'Active', 'আজহার'],
+  ['bkfgobra014@gmail.com', 'B014', 'Gobra', 'User', 'Active', 'গোবরা']
 ];
 
 const DEFAULT_ITEMS = [
@@ -98,11 +90,22 @@ function requireAdmin(user) {
 function publicUser(user) {
   return {
     email: user.email,
+    name: user.name || '',
+    userId: user.userId || '',
     branchId: user.branchId,
     branchName: user.branchName,
     role: user.role,
     status: user.status
   };
+}
+
+function signupEmail(userId, branchId) {
+  const raw = String(userId || '').trim().toLowerCase();
+  if (/^\S+@\S+\.\S+$/.test(raw)) return raw;
+  const slug = raw.replace(/[^a-z0-9]/g, '');
+  const digits = String(branchId || '').replace(/\D/g, '');
+  if (!slug) throw new HttpError('NEED_USER');
+  return 'bkf' + slug + digits + '@gmail.com';
 }
 
 function ensureSuperAdmin(db) {
@@ -141,8 +144,10 @@ function createFreshDb() {
       branchName: r[2],
       role: r[3],
       status: r[4],
+      name: r[5] || '',
       passwordHash: hashPassword(DEFAULT_PASSWORD)
     })),
+    prunedToGobra: true,
     items: DEFAULT_ITEMS.slice(),
     records: []
   };
@@ -160,17 +165,7 @@ function seedSamples(db) {
     ['B014', 'bkfgobra014@gmail.com', '2026-09-15', 'সদস্য ভর্তি ফরম', 'G-18', '', 0, 'ফিল্ড অফিসার', 60, '4'],
     ['B014', 'bkfgobra014@gmail.com', '2026-09-10', 'ব্যাগ', 'HO-0922', 'হেড অফিস', 15, '', 0, '5'],
     ['B014', 'bkfgobra014@gmail.com', '2026-09-18', 'ব্যাগ', 'G-21', '', 0, 'কেন্দ্র-২', 4, '6'],
-    ['B014', 'bkfgobra014@gmail.com', today, 'ক্যাশ ফিগার', 'G-22', 'হেড অফিস', 30, 'কেন্দ্র-১', 6, '7'],
-    ['B027', 'bkfnorailsador027@gmail.com', '2026-09-03', 'ঋণ চুক্তিপত্র', 'HO-0930', 'হেড অফিস', 80, '', 0, '1'],
-    ['B027', 'bkfnorailsador027@gmail.com', '2026-09-12', 'ঋণ চুক্তিপত্র', 'N-12', '', 0, 'কেন্দ্র-৪', 25, '2'],
-    ['B027', 'bkfnorailsador027@gmail.com', '2026-09-06', 'ক্যাশ ফিগার', 'HO-0933', 'হেড অফিস', 40, '', 0, '3'],
-    ['B027', 'bkfnorailsador027@gmail.com', '2026-09-19', 'ক্যাশ ফিগার', 'N-19', '', 0, 'ফিল্ড অফিসার', 36, '4'],
-    ['B020', 'bkfnoldi020@gmail.com', '2026-09-04', 'কেন্দ্র পাস বই', 'HO-0940', 'হেড অফিস', 30, 'কেন্দ্র-১', 10, '1'],
-    ['B020', 'bkfnoldi020@gmail.com', '2026-09-09', 'সদস্য হাজিরা খাতা', 'HO-0944', 'হেড অফিস', 25, '', 0, '2'],
-    ['B013', 'bkflohagora013@gmail.com', '2026-09-07', 'সঞ্চয় ফেরত', 'HO-0951', 'হেড অফিস', 60, 'স্টাফ', 15, '1'],
-    ['B013', 'bkflohagora013@gmail.com', '2026-09-16', 'ব্যাগ', 'L-16', 'হেড অফিস', 2, 'কেন্দ্র-৩', 5, '2'],
-    ['B019', 'bkfmahajon019@gmail.com', '2026-09-11', 'passbook', 'HO-0960', 'হেড অফিস', 40, 'কেন্দ্র-১', 5, '1'],
-    ['B019', 'bkfmahajon019@gmail.com', '2026-09-20', 'ব্যাগ', 'M-20', 'হেড অফিস', 8, '', 0, '2']
+    ['B014', 'bkfgobra014@gmail.com', today, 'ক্যাশ ফিগার', 'G-22', 'হেড অফিস', 30, 'কেন্দ্র-১', 6, '7']
   ];
   db.records = rows.map((r, i) => ({
     id: 'REC_SAMPLE_' + String(i + 1).padStart(3, '0'),
@@ -313,6 +308,52 @@ function setBranchStatus(db, user, branchId, status) {
   if (!branch) throw new HttpError('NOT_FOUND', 404);
   branch.status = String(status || '').toLowerCase() === 'active' ? 'Active' : 'Inactive';
   return { message: 'STATUS_UPDATED', status: branch.status };
+}
+
+function pruneToGobra(db) {
+  if (!db || db.prunedToGobra) return false;
+  if (!db.branches.some(b => b.id === 'B014')) {
+    db.branches.unshift({ id: 'B014', name: 'Gobra', status: 'Active', createdAt: '2026-01-01' });
+  }
+  db.branches = db.branches.filter(b => b.id === 'B014');
+  db.users = (db.users || []).filter(u => u.email === SUPER_ADMIN_EMAIL || u.branchId === 'B014');
+  db.records = (db.records || []).filter(r => r.branchId === 'B014');
+  db.prunedToGobra = true;
+  ensureSuperAdmin(db);
+  return true;
+}
+
+function signup(db, body) {
+  body = body || {};
+  const branchName = clip(body.branchName, 80);
+  const branchId = clip(body.branchCode || body.branchId, 40).toUpperCase();
+  const userName = clip(body.userName, 80);
+  const userId = clip(body.userId, 60);
+  const password = String(body.password || '');
+  const confirm = String(body.confirmPassword || body.confirm || '');
+  if (!branchName || !branchId) throw new HttpError('NEED_BRANCH');
+  if (!/^[A-Z0-9_-]+$/.test(branchId)) throw new HttpError('BAD_BRANCH_ID');
+  if (db.branches.some(b => b.id === branchId)) throw new HttpError('BRANCH_EXISTS');
+  if (!userName) throw new HttpError('NEED_NAME');
+  if (!userId) throw new HttpError('NEED_USER');
+  const email = signupEmail(userId, branchId);
+  if (!/^\S+@\S+\.\S+$/.test(email)) throw new HttpError('BAD_EMAIL');
+  if (db.users.some(u => u.email === email)) throw new HttpError('USER_EXISTS');
+  if (password.length < 4) throw new HttpError('PASSWORD_SHORT');
+  if (password !== confirm) throw new HttpError('PASSWORD_MISMATCH');
+  db.branches.push({ id: branchId, name: branchName, status: 'Active', createdAt: todayISO() });
+  db.users.push({
+    email,
+    name: userName,
+    userId,
+    branchId,
+    branchName,
+    role: 'User',
+    status: 'Active',
+    passwordHash: hashPassword(password)
+  });
+  db.prunedToGobra = true;
+  return { message: 'SIGNED_UP', email, branchId, branchName, userName };
 }
 
 function addUser(db, user, email, branchId, role) {
@@ -506,6 +547,7 @@ function restoreData(db, user, payload) {
   db.users = next.users;
   db.items = next.items;
   db.records = next.records;
+  db.prunedToGobra = true;
   return { message: 'RESTORED', records: db.records.length };
 }
 
@@ -536,6 +578,7 @@ function loadOrSeed() {
   if (fs.existsSync(DB_PATH)) {
     db = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
     ensureSuperAdmin(db);
+    if (pruneToGobra(db)) persistSync();
     return;
   }
   db = createFreshDb();
@@ -623,7 +666,8 @@ async function initRemoteStore() {
 async function loadState() {
   if (!process.env.DATABASE_URL) {
     if (!db) loadOrSeed();
-    return { db, version: null, remote: false };
+    if (pruneToGobra(db)) persistSync();
+    return { db, version: null, remote: false, dirty: false };
   }
   const sql = getNeon();
   await sql(`CREATE TABLE IF NOT EXISTS bims_state (
@@ -638,12 +682,13 @@ async function loadState() {
       'INSERT INTO bims_state (id, data, version) VALUES ($1, $2::jsonb, 1)',
       ['main', JSON.stringify(fresh)]
     );
-    return { db: fresh, version: 1, remote: true };
+    return { db: fresh, version: 1, remote: true, dirty: false };
   }
   const raw = rows[0].data;
   const loaded = typeof raw === 'string' ? JSON.parse(raw) : raw;
   ensureSuperAdmin(loaded);
-  return { db: loaded, version: Number(rows[0].version), remote: true };
+  const dirty = pruneToGobra(loaded);
+  return { db: loaded, version: Number(rows[0].version), remote: true, dirty };
 }
 
 async function saveState(state) {
@@ -772,6 +817,10 @@ async function perform(state, ctx) {
       headers: cookieHeader(token)
     };
   }
+  if (method === 'POST' && urlPath === '/api/signup') {
+    const result = signup(database, body);
+    return { dirty: true, status: 200, payload: Object.assign({ ok: true }, result) };
+  }
 
   const user = userFromAuth(database, ctx.authorization, ctx.cookie);
 
@@ -898,6 +947,9 @@ module.exports = {
   deleteRecord,
   addBranch,
   addUser,
+  signup,
+  signupEmail,
+  pruneToGobra,
   updateUserEmail,
   setUserStatus,
   resetPassword,

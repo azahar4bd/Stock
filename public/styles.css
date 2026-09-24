@@ -112,6 +112,20 @@ img { max-width: 100%; display: block; }
   place-items: center;
   padding: 28px 18px 40px;
 }
+.login-stack {
+  width: min(440px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.signup-card h2 {
+  font-size: 22px;
+  margin: 0;
+}
+.signup-card {
+  padding-top: 22px;
+}
+.login-stack .login-card { width: 100%; }
 .login-card {
   width: min(440px, 100%);
   background: var(--paper-2);
