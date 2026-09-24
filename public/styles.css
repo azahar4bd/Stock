@@ -126,6 +126,21 @@ img { max-width: 100%; display: block; }
   padding-top: 22px;
 }
 .login-stack .login-card { width: 100%; }
+.auth-switch {
+  margin: 16px 0 0;
+  text-align: center;
+  color: var(--muted);
+  font-size: 14px;
+}
+.auth-switch button {
+  border: 0;
+  background: transparent;
+  color: var(--leaf);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  padding: 0 4px;
+}
 .login-card {
   width: min(440px, 100%);
   background: var(--paper-2);

@@ -99,6 +99,8 @@ const I18N = {
     confirmPassword: 'কনফার্ম পাসওয়ার্ড',
     signupHelp: 'সাইন আপ করলেই নতুন ব্রাঞ্চ ও ইউজার তৈরি হবে।',
     signedUp: 'নতুন ব্রাঞ্চ খুলেছে। লগইন ইমেইল: {email}',
+    needAccount: 'নতুন ব্রাঞ্চ খুলবেন?',
+    haveAccount: 'আগে থেকে অ্যাকাউন্ট আছে?',
     quick: 'দ্রুত প্রবেশ',
     adminQuick: 'অ্যাডমিন',
     logout: 'বের হন',
@@ -256,6 +258,8 @@ const I18N = {
     confirmPassword: 'Confirm password',
     signupHelp: 'Sign up to open a new branch and its user.',
     signedUp: 'New branch is open. Login email: {email}',
+    needAccount: 'Opening a new branch?',
+    haveAccount: 'Already have an account?',
     quick: 'Quick enter',
     adminQuick: 'Admin',
     logout: 'Sign out',
@@ -480,6 +484,7 @@ const params = new URLSearchParams(location.search);
 const state = {
   lang: localStorage.getItem('bims_lang') || 'bn',
   token: sessionStorage.getItem('bims_token') || '',
+  authScreen: location.hash === '#signup' ? 'signup' : 'login',
   user: null,
   branches: [],
   users: [],
@@ -806,63 +811,69 @@ function showLogin() {
   const root = document.getElementById('login');
   root.classList.remove('hidden');
   const remembered = localStorage.getItem('bims_email') || '';
+  const brand =
+    '<section class="brand-panel">' +
+      '<div>' +
+        '<div class="brand-mark">' +
+          '<img src="logo.jpg" alt="' + esc(t('org')) + '">' +
+          '<div><p class="eyebrow">BIMS · Bandhu Kallyan Foundation</p><strong>' + esc(t('org')) + '</strong></div>' +
+        '</div>' +
+        '<h1>' + esc(t('appName')) + '</h1>' +
+        '<p class="tagline">' + esc(t('tagline')) + '</p>' +
+        '<ul class="stamps"><li><b>B014</b>' + esc(branchLabel('B014')) + '</li></ul>' +
+      '</div>' +
+      '<p class="brand-foot">Branch Item Management · ' + esc(t('footer')) + '</p>' +
+    '</section>';
+  const langBtn = '<div class="actions"><button type="button" class="btn ghost small" data-action="lang">' + esc(t('lang')) + '</button></div>';
+  const card = state.authScreen === 'signup'
+    ? '<form class="login-card signup-card" id="signup-form" autocomplete="off">' +
+        '<p class="eyebrow">BIMS</p>' +
+        '<h1>' + esc(t('signUpTitle')) + '</h1>' +
+        '<p class="hint">' + esc(t('signupHelp')) + '</p>' +
+        '<label for="branchName">' + esc(t('branchName')) + '</label>' +
+        '<input id="branchName" name="branchName" required maxlength="80">' +
+        '<label for="branchCode">' + esc(t('branchCode')) + '</label>' +
+        '<input id="branchCode" name="branchCode" required maxlength="40" autocapitalize="characters" placeholder="B021">' +
+        '<label for="userName">' + esc(t('userName')) + '</label>' +
+        '<input id="userName" name="userName" required maxlength="80">' +
+        '<label for="userId">' + esc(t('userId')) + '</label>' +
+        '<input id="userId" name="userId" required maxlength="60" autocapitalize="none" placeholder="narail">' +
+        '<p class="hint">' + esc(t('emailAuto')) + ': <code id="signup-email">—</code></p>' +
+        '<p class="hint">' + esc(t('emailAutoHint')) + '</p>' +
+        '<label for="signup-password">' + esc(t('password')) + '</label>' +
+        '<input id="signup-password" name="password" type="password" autocomplete="new-password" required minlength="4">' +
+        '<label for="confirmPassword">' + esc(t('confirmPassword')) + '</label>' +
+        '<input id="confirmPassword" name="confirmPassword" type="password" autocomplete="new-password" required minlength="4">' +
+        '<p class="form-error" id="signup-error"></p>' +
+        '<button class="btn block" type="submit">' + esc(t('signUp')) + '</button>' +
+        '<p class="auth-switch">' + esc(t('haveAccount')) + '</p>' +
+        '<button class="btn block ghost" type="button" data-action="goto-login">' + esc(t('signIn')) + '</button>' +
+        langBtn +
+      '</form>'
+    : '<form class="login-card" id="login-form" autocomplete="on">' +
+        '<p class="eyebrow">BIMS</p>' +
+        '<h1>' + esc(t('appName')) + '</h1>' +
+        '<p class="org">' + esc(t('org')) + '</p>' +
+        '<label for="email">' + esc(t('email')) + '</label>' +
+        '<input id="email" name="email" type="email" autocomplete="username" required value="' + esc(remembered) + '">' +
+        '<label for="password">' + esc(t('password')) + '</label>' +
+        '<div class="pass-row">' +
+          '<input id="password" name="password" type="password" autocomplete="current-password" required value="">' +
+          '<button type="button" class="pass-toggle" data-action="toggle-pass">' + esc(t('show')) + '</button>' +
+        '</div>' +
+        '<p class="form-error" id="login-error"></p>' +
+        '<button class="btn block" type="submit">' + esc(t('signIn')) + '</button>' +
+        '<p class="auth-switch">' + esc(t('needAccount')) + '</p>' +
+        '<button class="btn block ghost" type="button" data-action="goto-signup">' + esc(t('signUp')) + '</button>' +
+        langBtn +
+      '</form>';
   root.innerHTML =
-    '<div class="login-wrap">' +
-      '<section class="brand-panel">' +
-        '<div>' +
-          '<div class="brand-mark">' +
-            '<img src="logo.jpg" alt="' + esc(t('org')) + '">' +
-            '<div><p class="eyebrow">BIMS · Bandhu Kallyan Foundation</p><strong>' + esc(t('org')) + '</strong></div>' +
-          '</div>' +
-          '<h1>' + esc(t('appName')) + '</h1>' +
-          '<p class="tagline">' + esc(t('tagline')) + '</p>' +
-          '<ul class="stamps"><li><b>B014</b>' + esc(branchLabel('B014')) + '</li></ul>' +
-        '</div>' +
-        '<p class="brand-foot">Branch Item Management · ' + esc(t('footer')) + '</p>' +
-      '</section>' +
-      '<section class="login-side">' +
-        '<div class="login-stack">' +
-          '<form class="login-card" id="login-form" autocomplete="on">' +
-            '<p class="eyebrow">BIMS</p>' +
-            '<h1>' + esc(t('appName')) + '</h1>' +
-            '<p class="org">' + esc(t('org')) + '</p>' +
-            '<label for="email">' + esc(t('email')) + '</label>' +
-            '<input id="email" name="email" type="email" autocomplete="username" required value="' + esc(remembered) + '">' +
-            '<label for="password">' + esc(t('password')) + '</label>' +
-            '<div class="pass-row">' +
-              '<input id="password" name="password" type="password" autocomplete="current-password" required value="">' +
-              '<button type="button" class="pass-toggle" data-action="toggle-pass">' + esc(t('show')) + '</button>' +
-            '</div>' +
-            '<p class="form-error" id="login-error"></p>' +
-            '<button class="btn block" type="submit">' + esc(t('signIn')) + '</button>' +
-          '</form>' +
-          '<form class="login-card signup-card" id="signup-form" autocomplete="off">' +
-            '<h2>' + esc(t('signUpTitle')) + '</h2>' +
-            '<p class="hint">' + esc(t('signupHelp')) + '</p>' +
-            '<label for="branchName">' + esc(t('branchName')) + '</label>' +
-            '<input id="branchName" name="branchName" required maxlength="80">' +
-            '<label for="branchCode">' + esc(t('branchCode')) + '</label>' +
-            '<input id="branchCode" name="branchCode" required maxlength="40" autocapitalize="characters" placeholder="B021">' +
-            '<label for="userName">' + esc(t('userName')) + '</label>' +
-            '<input id="userName" name="userName" required maxlength="80">' +
-            '<label for="userId">' + esc(t('userId')) + '</label>' +
-            '<input id="userId" name="userId" required maxlength="60" autocapitalize="none" placeholder="narail">' +
-            '<p class="hint">' + esc(t('emailAuto')) + ': <code id="signup-email">—</code></p>' +
-            '<p class="hint">' + esc(t('emailAutoHint')) + '</p>' +
-            '<label for="signup-password">' + esc(t('password')) + '</label>' +
-            '<input id="signup-password" name="password" type="password" autocomplete="new-password" required minlength="4">' +
-            '<label for="confirmPassword">' + esc(t('confirmPassword')) + '</label>' +
-            '<input id="confirmPassword" name="confirmPassword" type="password" autocomplete="new-password" required minlength="4">' +
-            '<p class="form-error" id="signup-error"></p>' +
-            '<button class="btn block" type="submit">' + esc(t('signUp')) + '</button>' +
-            '<div class="actions"><button type="button" class="btn ghost small" data-action="lang">' + esc(t('lang')) + '</button></div>' +
-          '</form>' +
-        '</div>' +
-      '</section>' +
+    '<div class="login-wrap">' + brand +
+      '<section class="login-side"><div class="login-stack">' + card + '</div></section>' +
     '</div>';
-  bindSignupPreview();
+  if (state.authScreen === 'signup') bindSignupPreview();
   document.documentElement.lang = state.lang === 'bn' ? 'bn' : 'en';
-  document.title = t('appName') + ' · BIMS';
+  document.title = (state.authScreen === 'signup' ? t('signUp') : t('appName')) + ' · BIMS';
 }
 
 function showApp() {
@@ -1475,6 +1486,11 @@ async function doSave(form, force) {
 }
 
 function bind() {
+  window.addEventListener('hashchange', () => {
+    if (state.user) return;
+    state.authScreen = location.hash === '#signup' ? 'signup' : 'login';
+    showLogin();
+  });
   document.addEventListener('click', async e => {
     if (e.target.closest('.modal') && e.target.classList.contains('modal-back') === false && e.target.dataset.action === 'close-modal') {
       /* inner close buttons still handled below */
@@ -1495,6 +1511,18 @@ function bind() {
       } catch (err) {
         toast(tErr(err.message), 'err');
       }
+      return;
+    }
+    if (action === 'goto-signup') {
+      state.authScreen = 'signup';
+      if (location.hash !== '#signup') location.hash = 'signup';
+      else showLogin();
+      return;
+    }
+    if (action === 'goto-login') {
+      state.authScreen = 'login';
+      if (location.hash === '#signup') location.hash = '';
+      else showLogin();
       return;
     }
     if (action === 'lang') {
@@ -1538,6 +1566,8 @@ function bind() {
       state.token = '';
       state.user = null;
       sessionStorage.removeItem('bims_token');
+      state.authScreen = 'login';
+      if (location.hash === '#signup') history.replaceState(null, '', location.pathname + location.search);
       showLogin();
       return;
     }
