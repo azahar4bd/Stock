@@ -80,7 +80,6 @@ const I18N = {
   bn: {
     appName: 'স্টক খাতা',
     org: 'বন্ধু কল্যাণ ফাউন্ডেশন',
-    tagline: 'শাখার পাসবুক, ফরম, খাতা ও ব্যাগ — গ্রহণ, বিতরণ, স্থিতি। এক খাতায়।',
     email: 'ইমেইল',
     password: 'পাসওয়ার্ড',
     show: 'দেখাও',
@@ -239,7 +238,6 @@ const I18N = {
   en: {
     appName: 'Stock Register',
     org: 'Bandhu Kallyan Foundation',
-    tagline: 'Passbooks, forms, registers and bags — received, issued, on hand. One book.',
     email: 'Email',
     password: 'Password',
     show: 'Show',
@@ -819,7 +817,6 @@ function showLogin() {
           '<div><p class="eyebrow">BIMS · Bandhu Kallyan Foundation</p><strong>' + esc(t('org')) + '</strong></div>' +
         '</div>' +
         '<h1>' + esc(t('appName')) + '</h1>' +
-        '<p class="tagline">' + esc(t('tagline')) + '</p>' +
         '<ul class="stamps"><li><b>B014</b>' + esc(branchLabel('B014')) + '</li></ul>' +
       '</div>' +
       '<p class="brand-foot">Branch Item Management · ' + esc(t('footer')) + '</p>' +
