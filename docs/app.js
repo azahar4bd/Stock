@@ -162,6 +162,8 @@ const I18N = {
     fromDate: 'শুরু',
     toDate: 'শেষ',
     noRecords: 'এই ফিল্টারে কোনো এন্ট্রি নেই।',
+    noEntryYet: 'এখনো কোনো এন্ট্রি নেই। ঘর পূরণ করে সংরক্ষণ চাপুন।',
+    clearFilters: 'সব দেখান',
     edit: 'সংশোধন',
     delete: 'মুছুন',
     confirmDelete: 'এই এন্ট্রি মুছে ফেলবেন?',
@@ -320,6 +322,8 @@ const I18N = {
     fromDate: 'From',
     toDate: 'To',
     noRecords: 'No entries for this filter.',
+    noEntryYet: 'No entries yet. Fill the form and tap Save.',
+    clearFilters: 'Show all',
     edit: 'Edit',
     delete: 'Delete',
     confirmDelete: 'Delete this entry?',
@@ -612,6 +616,18 @@ function captureDraft() {
   const form = document.getElementById('entry-form');
   if (!form) return;
   state.draft = Object.fromEntries(new FormData(form).entries());
+}
+function chosenBranchId() {
+  if (!isAdmin()) return (state.user && state.user.branchId) || '';
+  const sw = document.getElementById('branch-switch');
+  return (sw && sw.value) || state.branchFilter || (state.user && state.user.branchId) || '';
+}
+function parseQty(value) {
+  const map = { '০': '0', '১': '1', '২': '2', '৩': '3', '৪': '4', '৫': '5', '৬': '6', '৭': '7', '৮': '8', '৯': '9' };
+  const raw = String(value == null ? '' : value).replace(/[০-৯]/g, d => map[d]).replace(/,/g, '.').trim();
+  if (!raw) return 0;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : NaN;
 }
 function stockMap(branchId) {
   const map = {};
@@ -1090,24 +1106,24 @@ function viewEntry() {
   return '<section class="panel">' +
     '<div class="view-head"><div><h2 class="sheet-title">' + esc(editing ? t('editTitle') : t('entryTitle')) + '</h2></div></div>' +
     (editing ? '<div class="edit-flag">' + esc(t('editTitle')) + ' · <span class="num">' + esc(d.id) + '</span></div>' : '') +
-    '<form id="entry-form" autocomplete="off">' +
+    '<form id="entry-form" autocomplete="off" novalidate>' +
       '<input type="hidden" name="id" value="' + esc(d.id || '') + '">' +
       '<input type="hidden" name="branchId" value="' + esc(d.branchId || '') + '">' +
       '<input type="hidden" name="srNo" value="' + esc(d.srNo || '') + '">' +
       '<div class="entry-pairs">' +
-        field(t('item'), '<select name="itemName" id="item-select" required>' + itemOptions + '</select>') +
-        field(t('date'), '<input type="date" name="date" required value="' + esc(d.date || '') + '">') +
+        field(t('item'), '<select name="itemName" id="item-select">' + itemOptions + '</select>') +
+        field(t('date'), '<input type="date" name="date" value="' + esc(d.date || '') + '">') +
         field(t('chalan'), '<input name="chalanNo" value="' + esc(d.chalanNo || '') + '" placeholder="HO-0912">') +
-        '<label>' + esc(t('currentBal')) + '<div class="live-bal" id="live-balance"><strong>—</strong></div></label>' +
+        '<label>' + esc(t('currentBal')) + '<div class="live-bal readonly" id="live-balance"><strong>—</strong></div></label>' +
         field(t('fromWho'), '<input name="fromVal" list="from-list" value="' + esc(d.fromVal || '') + '" placeholder="' + esc(state.lang === 'bn' ? 'হেড অফিস / প্রারম্ভিক স্থিতি' : 'Head office / Opening') + '">') +
-        field(t('fromQty'), '<input name="fromAmt" type="number" min="0" step="any" inputmode="decimal" value="' + esc(d.fromAmt || '') + '">') +
+        field(t('fromQty'), '<input name="fromAmt" inputmode="decimal" value="' + esc(d.fromAmt || '') + '" placeholder="0">') +
         field(t('toWhom'), '<input name="saleVal" list="sale-list" value="' + esc(d.saleVal || '') + '" placeholder="' + esc(state.lang === 'bn' ? 'কেন্দ্র / ফিল্ড অফিসার' : 'Center / Field officer') + '">') +
-        field(t('toQty'), '<input name="saleAmt" type="number" min="0" step="any" inputmode="decimal" value="' + esc(d.saleAmt || '') + '">') +
+        field(t('toQty'), '<input name="saleAmt" inputmode="decimal" value="' + esc(d.saleAmt || '') + '" placeholder="0">') +
       '</div>' +
       lists +
       '<p class="form-error" id="form-error"></p>' +
-      '<div class="actions">' +
-        '<button class="btn" type="submit">' + esc(editing ? t('update') : t('save')) + '</button>' +
+      '<div class="actions entry-actions">' +
+        '<button class="btn block" type="submit" data-action="save-entry">' + esc(editing ? t('update') : t('save')) + '</button>' +
         '<button class="btn ghost" type="button" data-action="reset-entry">' + esc(editing ? t('cancelEdit') : t('reset')) + '</button>' +
       '</div>' +
     '</form></section>' + entryTable();
@@ -1153,7 +1169,9 @@ function entryTable() {
           '<th>' + esc(t('toQty')) + '</th>' +
           '<th></th>' +
         '</tr></thead><tbody>' + body + '</tbody></table></div>'
-      : '<p class="empty">' + esc(t('noRecords')) + '</p>') +
+      : '<p class="empty">' + esc(state.records.length ? t('noRecords') : t('noEntryYet')) +
+          (state.records.length ? ' <button type="button" class="btn tiny ghost" data-action="clear-entry-filters">' + esc(t('clearFilters')) + '</button>' : '') +
+        '</p>') +
   '</section>';
 }
 
@@ -1464,47 +1482,72 @@ async function doLogin(form) {
   }
 }
 
-async function doSave(form, force) {
-  captureDraft();
-  const data = Object.assign({}, state.draft);
+function showEntryError(code) {
   const err = document.getElementById('form-error');
-  if (!data.itemName) {
-    if (err) err.textContent = tErr('NEED_ITEM');
-    return;
-  }
-  if (!(Number(data.fromAmt) > 0) && !(Number(data.saleAmt) > 0)) {
-    if (err) err.textContent = tErr('NEED_QTY');
-    return;
-  }
-  if (!force && data.chalanNo) {
-    const dup = state.records.some(r => r.id !== data.id && r.branchId === data.branchId && r.chalanNo === data.chalanNo && r.itemName === data.itemName);
-    if (dup) {
-      openModal({
-        title: t('chalan'),
-        text: t('dupChalan'),
-        confirmText: t('yesSave'),
-        onConfirm: () => doSave(form, true)
-      });
+  const text = tErr(code);
+  if (err) err.textContent = text;
+  toast(text, 'err');
+}
+async function doSave(form, force) {
+  if (state.saving) return;
+  state.saving = true;
+  const btn = form && form.querySelector('[data-action=save-entry]');
+  try {
+    captureDraft();
+    const data = Object.assign({}, state.draft);
+    data.branchId = chosenBranchId() || data.branchId;
+    data.fromAmt = parseQty(data.fromAmt);
+    data.saleAmt = parseQty(data.saleAmt);
+    if (!data.date) data.date = todayISO();
+    if (!data.itemName) {
+      showEntryError('NEED_ITEM');
       return;
     }
-  }
-  const btn = form.querySelector('button[type=submit]');
-  if (btn) btn.disabled = true;
-  try {
+    if (Number.isNaN(data.fromAmt) || Number.isNaN(data.saleAmt)) {
+      showEntryError('BAD_QTY');
+      return;
+    }
+    if (!(data.fromAmt > 0) && !(data.saleAmt > 0)) {
+      showEntryError('NEED_QTY');
+      return;
+    }
+    if (!data.branchId) {
+      showEntryError('BRANCH_REQUIRED');
+      return;
+    }
+    if (!force && data.chalanNo) {
+      const dup = state.records.some(r => r.id !== data.id && r.branchId === data.branchId && r.chalanNo === data.chalanNo && r.itemName === data.itemName);
+      if (dup) {
+        openModal({
+          title: t('chalan'),
+          text: t('dupChalan'),
+          confirmText: t('yesSave'),
+          onConfirm: () => doSave(form, true)
+        });
+        return;
+      }
+    }
+    if (btn) btn.disabled = true;
     const result = await api('/api/records', { method: 'POST', body: data });
     await refresh();
     const wasEdit = !!data.id;
+    const hidden = (state.regFrom && data.date < state.regFrom) || (state.regTo && data.date > state.regTo) || (state.regItem && state.regItem !== data.itemName);
+    if (hidden) {
+      state.regFrom = '';
+      state.regTo = '';
+      state.regItem = '';
+    }
     state.draft = blankDraft();
     toast(wasEdit ? t('updated') : t('saved'));
     renderShell();
     renderView();
-    if (result && result.id && !wasEdit) {
-      const live = document.getElementById('form-error');
-      if (live) live.textContent = '';
-    }
+    const row = result && result.id ? document.querySelector('[data-id="' + result.id + '"]') : null;
+    if (row && row.scrollIntoView) row.scrollIntoView({ block: 'center' });
   } catch (e) {
-    if (err) err.textContent = tErr(e.message);
+    showEntryError(e.message);
     if (btn) btn.disabled = false;
+  } finally {
+    state.saving = false;
   }
 }
 
@@ -1637,8 +1680,22 @@ function bind() {
       renderView();
       return;
     }
+    if (action === 'save-entry') {
+      e.preventDefault();
+      const form = document.getElementById('entry-form');
+      if (form) await doSave(form, false);
+      return;
+    }
     if (action === 'reset-entry') {
       state.draft = blankDraft();
+      renderView();
+      return;
+    }
+    if (action === 'clear-entry-filters') {
+      captureDraft();
+      state.regFrom = '';
+      state.regTo = '';
+      state.regItem = '';
       renderView();
       return;
     }
@@ -1865,9 +1922,9 @@ function bind() {
     }
     if (id === 'stock-item') { state.stockItem = e.target.value; renderView(); return; }
     if (id === 'stock-q') { state.stockQ = e.target.value; return; }
-    if (id === 'reg-item') { state.regItem = e.target.value; renderView(); return; }
-    if (id === 'reg-from') { state.regFrom = e.target.value; renderView(); return; }
-    if (id === 'reg-to') { state.regTo = e.target.value; renderView(); return; }
+    if (id === 'reg-item') { captureDraft(); state.regItem = e.target.value; renderView(); return; }
+    if (id === 'reg-from') { captureDraft(); state.regFrom = e.target.value; renderView(); return; }
+    if (id === 'reg-to') { captureDraft(); state.regTo = e.target.value; renderView(); return; }
     if (id === 'rep-from') { state.repFrom = e.target.value; renderView(); return; }
     if (id === 'rep-to') { state.repTo = e.target.value; renderView(); return; }
     if (id === 'restore-file' && e.target.files && e.target.files[0]) {

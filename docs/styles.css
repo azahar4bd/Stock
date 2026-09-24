@@ -462,9 +462,19 @@ input:focus, select:focus, textarea:focus {
   margin: 0;
   min-height: 46px;
   justify-content: flex-start;
-  background: #fff;
-  border: 1px solid #d9ccba;
+  background: #f7f1e6;
+  border: 1px dashed #d9ccba;
+  color: var(--muted);
+  cursor: default;
 }
+.entry-actions {
+  position: sticky;
+  bottom: calc(68px + env(safe-area-inset-bottom));
+  z-index: 6;
+  background: var(--paper-2);
+  padding: 8px 0 2px;
+}
+.entry-actions .btn.block { width: 100%; }
 .entry-filters {
   display: grid;
   grid-template-columns: minmax(108px, 1fr) minmax(108px, 1fr) minmax(120px, 1.3fr);
