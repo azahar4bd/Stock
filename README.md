@@ -1,9 +1,10 @@
 # স্টক খাতা · BIMS
 
-**প্রিভিউ:** https://htmlpreview.github.io/?https://raw.githubusercontent.com/azahar4bd/Stock/arena/01a0c907-stock/docs/index.html
+**লাইভ:** https://bkf-bims-stock.netlify.app
 
-GitHub Pages চালু থাকলে ছোট লিংক: https://azahar4bd.github.io/Stock/  
-চালু করতে: Repository → Settings → Pages → Branch `arena/01a0c907-stock`, folder `/docs`, Save.
+ডেটা Neon-এ থাকে। শুরুর অ্যাপ পাসওয়ার্ড `bkf2026` — এটা Gmail পাসওয়ার্ড নয়।
+
+GitHub ফাইল প্রিভিউ (শুধু ব্রাউজারে): https://htmlpreview.github.io/?https://raw.githubusercontent.com/azahar4bd/Stock/arena/01a0c907-stock/docs/index.html
 
 বন্ধু কল্যাণ ফাউন্ডেশনের ব্রাঞ্চ আইটেম খাতা। পাসবুক, ফরম, হাজিরা খাতা ও ব্যাগের **গ্রহণ, বিতরণ ও স্থিতি** — শাখা আলাদা, অ্যাডমিন সব শাখা দেখেন।
 
