@@ -142,30 +142,37 @@ async function ensureNeon() {
   return { projectId, uri };
 }
 
-async function ensureSite() {
-  const wanted = 'bkf-bims-stock';
-  const knownId = 'ddfd8828-9a3b-4cd9-a053-eb5dd32d5546';
+async function renameSite(site, wanted) {
+  if (site.name === wanted) return site;
+  const body = { name: wanted };
   try {
-    const existing = await netlifyApi('/sites/' + knownId);
-    if (existing && existing.id) return existing;
-  } catch { /* create or find by name */ }
-  let site = null;
-  try {
-    site = await netlifyApi('/sites', { method: 'POST', body: { name: wanted } });
+    return await netlifyApi('/sites/' + site.id, { method: 'PATCH', body });
   } catch (err) {
-    const sites = await netlifyApi('/sites?filter=all&per_page=100');
-    const list = Array.isArray(sites) ? sites : [];
-    site = list.find(item => item.name === wanted) || null;
-    if (!site) {
-      try {
-        site = await netlifyApi('/sites', { method: 'POST', body: {} });
-      } catch (createErr) {
-        fail(err.message + ' | ' + createErr.message);
-      }
+    try {
+      return await netlifyApi('/sites/' + site.id, { method: 'PUT', body });
+    } catch (updateErr) {
+      fail('could not rename site to ' + wanted + ': ' + err.message + ' | ' + updateErr.message);
     }
   }
+}
+
+async function ensureSite() {
+  const wanted = 'bkf-stock';
+  const knownId = 'ddfd8828-9a3b-4cd9-a053-eb5dd32d5546';
+  let site = null;
+  try {
+    site = await netlifyApi('/sites/' + knownId);
+  } catch { /* find by name */ }
+  if (!site) {
+    const sites = await netlifyApi('/sites?filter=all&per_page=100');
+    const list = Array.isArray(sites) ? sites : [];
+    site = list.find(item => item.name === wanted || item.name === 'bkf-bims-stock') || null;
+  }
+  if (!site) {
+    site = await netlifyApi('/sites', { method: 'POST', body: { name: wanted } });
+  }
   if (!site || !site.id) fail('Netlify site missing');
-  return site;
+  return renameSite(site, wanted);
 }
 
 async function setEnv(site, key, value) {

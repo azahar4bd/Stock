@@ -1,6 +1,6 @@
 # স্টক খাতা · BIMS
 
-**লাইভ:** https://bkf-bims-stock.netlify.app
+**লাইভ:** https://bkf-stock.netlify.app
 
 ডেটা Neon-এ থাকে। শুরুর অ্যাপ পাসওয়ার্ড `bkf2026` — এটা Gmail পাসওয়ার্ড নয়।
 
