@@ -919,7 +919,7 @@ function renderShell() {
       '</select>'
     : '<span class="badge">' + esc(branchLabel(state.user.branchId)) + ' · ' + esc(state.user.branchId) + '</span>';
   document.getElementById('app').innerHTML =
-    '<div class="app-shell">' +
+    '<div class="app-shell" data-view="' + esc(state.view) + '">' +
       '<aside class="side">' +
         '<div class="side-brand"><img src="logo.jpg" alt=""><div><p class="eyebrow">BIMS</p><strong>' + esc(t('appName')) + '</strong><span>' + esc(t('org')) + '</span></div></div>' +
         '<nav>' + navButtons('nav-btn') + '</nav>' +
@@ -1103,7 +1103,7 @@ function viewEntry() {
     '<option value="' + esc(item) + '"' + (d.itemName === item ? ' selected' : '') + '>' + esc(itemLabel(item)) + '</option>'
   )).join('');
   const lists = datalists();
-  return '<section class="panel">' +
+  return '<section class="panel entry-sheet">' +
     '<div class="view-head"><div><h2 class="sheet-title">' + esc(editing ? t('editTitle') : t('entryTitle')) + '</h2></div></div>' +
     (editing ? '<div class="edit-flag">' + esc(t('editTitle')) + ' · <span class="num">' + esc(d.id) + '</span></div>' : '') +
     '<form id="entry-form" autocomplete="off" novalidate>' +

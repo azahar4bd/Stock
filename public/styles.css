@@ -452,29 +452,58 @@ input:focus, select:focus, textarea:focus {
   margin-bottom: 12px;
 }
 .live-bal strong { font-family: var(--num); font-size: 22px; }
+.entry-sheet { padding: 8px 10px 6px; }
+.entry-sheet .view-head { margin-bottom: 4px; }
+.entry-sheet .sheet-title { font-size: 17px; line-height: 1.15; }
+.entry-sheet .edit-flag { padding: 4px 8px; margin-bottom: 4px; font-size: 13px; }
+.entry-sheet .form-error { min-height: 0; margin: 2px 0 0; font-size: 13px; }
+.entry-sheet .form-error:empty { display: none; }
 .entry-pairs {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px 10px;
+  gap: 4px 8px;
 }
-.entry-pairs > label { margin: 0; }
+.entry-pairs > label {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.1;
+  font-weight: 600;
+}
+.entry-pairs input,
+.entry-pairs select {
+  height: 32px;
+  min-height: 0;
+  padding: 0 8px;
+  border-radius: 8px;
+  font-size: 15px;
+  line-height: 32px;
+}
 .entry-pairs .live-bal {
   margin: 0;
-  min-height: 46px;
+  height: 32px;
+  min-height: 0;
+  padding: 0 8px;
+  border-radius: 8px;
   justify-content: flex-start;
   background: #f7f1e6;
   border: 1px dashed #d9ccba;
   color: var(--muted);
   cursor: default;
 }
+.entry-pairs .live-bal strong { font-size: 15px; }
+.entry-sheet .actions { margin-top: 6px; gap: 6px; flex-wrap: nowrap; }
 .entry-actions {
   position: sticky;
-  bottom: calc(68px + env(safe-area-inset-bottom));
+  bottom: calc(62px + env(safe-area-inset-bottom));
   z-index: 6;
   background: var(--paper-2);
-  padding: 8px 0 2px;
+  padding: 4px 0 0;
 }
-.entry-actions .btn.block { width: 100%; }
+.entry-actions .btn { padding: 7px 12px; }
+.entry-actions .btn.block { width: auto; flex: 1; margin-top: 0; }
 .entry-filters {
   display: grid;
   grid-template-columns: minmax(108px, 1fr) minmax(108px, 1fr) minmax(120px, 1.3fr);
@@ -697,6 +726,13 @@ td.low, .low { color: #8a6230; font-weight: 700; }
 }
 
 @media (max-width: 959px) {
+  .app-shell[data-view="entry"] .topbar { padding: 6px 10px 6px 14px; gap: 4px 8px; }
+  .app-shell[data-view="entry"] .topbar h2 { font-size: 18px; }
+  .app-shell[data-view="entry"] .top-actions { gap: 4px; }
+  .app-shell[data-view="entry"] .top-actions .btn { padding: 6px 8px; font-size: 13px; }
+  .app-shell[data-view="entry"] .top-actions select { min-width: 0; padding: 6px 8px; }
+  .app-shell[data-view="entry"] #view { padding: 6px 10px 72px; }
+  .entry-sheet .view-head { display: none; }
   .login-wrap { grid-template-columns: 1fr; }
   .brand-panel { padding: 22px 18px 18px; }
   .brand-panel h1 { font-size: 30px; }
