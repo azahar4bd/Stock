@@ -1347,8 +1347,13 @@ function bind() {
       const form = document.getElementById('login-form');
       if (!form) return;
       form.email.value = el.dataset.email;
-      form.password.value = DEMO_PASSWORD;
-      form.requestSubmit ? form.requestSubmit() : form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+      if (allowAutoEnter()) {
+        form.password.value = DEMO_PASSWORD;
+        form.requestSubmit ? form.requestSubmit() : form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+      } else {
+        const password = form.querySelector('[name=password]');
+        if (password) password.focus();
+      }
       return;
     }
     if (action === 'nav') {
