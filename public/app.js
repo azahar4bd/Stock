@@ -1151,28 +1151,32 @@ function entryTable() {
       '</td>' +
     '</tr>'
   ).join('');
-  return '<section class="panel">' +
-    '<div class="entry-filters">' +
-      '<label>' + esc(t('fromDate')) + '<input id="reg-from" type="date" value="' + esc(state.regFrom) + '"></label>' +
-      '<label>' + esc(t('toDate')) + '<input id="reg-to" type="date" value="' + esc(state.regTo) + '"></label>' +
-      '<label>' + esc(t('item')) + '<select id="reg-item">' + itemOptions + '</select></label>' +
-    '</div>' +
-    (rows.length
-      ? '<div class="table-wrap"><table class="entry-table"><thead><tr>' +
-          '<th class="left">' + esc(t('date')) + '</th>' +
-          (showBranch ? '<th class="left">' + esc(t('branch')) + '</th>' : '') +
-          '<th class="left">' + esc(t('item')) + '</th>' +
-          '<th>' + esc(t('chalan')) + '</th>' +
-          '<th class="left">' + esc(t('fromWho')) + '</th>' +
-          '<th>' + esc(t('fromQty')) + '</th>' +
-          '<th class="left">' + esc(t('toWhom')) + '</th>' +
-          '<th>' + esc(t('toQty')) + '</th>' +
-          '<th></th>' +
-        '</tr></thead><tbody>' + body + '</tbody></table></div>'
-      : '<p class="empty">' + esc(state.records.length ? t('noRecords') : t('noEntryYet')) +
-          (state.records.length ? ' <button type="button" class="btn tiny ghost" data-action="clear-entry-filters">' + esc(t('clearFilters')) + '</button>' : '') +
-        '</p>') +
-  '</section>';
+  return '<div class="entry-list">' +
+    '<section class="panel entry-filter-bar">' +
+      '<div class="entry-filters">' +
+        '<label>' + esc(t('fromDate')) + '<input id="reg-from" type="date" value="' + esc(state.regFrom) + '"></label>' +
+        '<label>' + esc(t('toDate')) + '<input id="reg-to" type="date" value="' + esc(state.regTo) + '"></label>' +
+        '<label>' + esc(t('item')) + '<select id="reg-item">' + itemOptions + '</select></label>' +
+      '</div>' +
+    '</section>' +
+    '<section class="panel entry-table-panel">' +
+      (rows.length
+        ? '<div class="table-wrap"><table class="entry-table"><thead><tr>' +
+            '<th class="left">' + esc(t('date')) + '</th>' +
+            (showBranch ? '<th class="left">' + esc(t('branch')) + '</th>' : '') +
+            '<th class="left">' + esc(t('item')) + '</th>' +
+            '<th>' + esc(t('chalan')) + '</th>' +
+            '<th class="left">' + esc(t('fromWho')) + '</th>' +
+            '<th>' + esc(t('fromQty')) + '</th>' +
+            '<th class="left">' + esc(t('toWhom')) + '</th>' +
+            '<th>' + esc(t('toQty')) + '</th>' +
+            '<th></th>' +
+          '</tr></thead><tbody>' + body + '</tbody></table></div>'
+        : '<p class="empty">' + esc(state.records.length ? t('noRecords') : t('noEntryYet')) +
+            (state.records.length ? ' <button type="button" class="btn tiny ghost" data-action="clear-entry-filters">' + esc(t('clearFilters')) + '</button>' : '') +
+          '</p>') +
+    '</section>' +
+  '</div>';
 }
 
 function field(label, control) {

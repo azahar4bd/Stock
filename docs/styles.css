@@ -504,17 +504,22 @@ input:focus, select:focus, textarea:focus {
 }
 .entry-actions .btn { padding: 7px 12px; }
 .entry-actions .btn.block { width: auto; flex: 1; margin-top: 0; }
+.entry-list { display: flex; flex-direction: column; gap: 14px; margin-top: 12px; }
+.entry-list > .panel { margin: 0; }
+.entry-filter-bar { padding: 12px; }
+.entry-table-panel { padding: 12px; }
 .entry-filters {
   display: grid;
   grid-template-columns: minmax(108px, 1fr) minmax(108px, 1fr) minmax(120px, 1.3fr);
-  gap: 8px;
-  margin: 0 0 12px;
+  gap: 10px 12px;
+  margin: 0;
   align-items: end;
-  overflow-x: auto;
 }
-.entry-filters label { margin: 0; font-size: 13px; }
-.entry-filters input, .entry-filters select { padding: 8px 6px; font-size: 13px; }
-.entry-table { min-width: 760px; }
+.entry-filters label { margin: 0; font-size: 13px; line-height: 1.2; }
+.entry-filters input, .entry-filters select { padding: 8px 8px; font-size: 14px; }
+.entry-table { min-width: 760px; border-collapse: separate; border-spacing: 0; }
+.entry-table th, .entry-table td { white-space: nowrap; padding: 10px 14px; }
+.entry-table thead th { position: static; top: auto; }
 .entry-table .row-actions { white-space: nowrap; }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 .edit-flag {
