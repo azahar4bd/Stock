@@ -65,19 +65,41 @@ function uriFrom(data) {
   return data.uri || data.connection_uri || data.connection_string || '';
 }
 
+function orgIdFrom(data) {
+  const list = data.organizations || data || [];
+  const orgs = Array.isArray(list) ? list : [];
+  const org = orgs.find(item => item && item.id) || null;
+  return org ? org.id : '';
+}
+
+async function neonOrgId() {
+  const orgs = await neonApi('/users/me/organizations');
+  const id = orgIdFrom(orgs);
+  if (!id) fail('Neon organization id missing');
+  return id;
+}
+
 async function ensureNeon() {
-  const listed = await neonApi('/projects');
+  const orgId = await neonOrgId();
+  const listed = await neonApi('/projects?org_id=' + encodeURIComponent(orgId));
   const projects = listed.projects || [];
   let project = projects.find(item => item.name === 'bkf-bims-stock');
+  let created = null;
   if (!project) {
     const regions = ['aws-ap-southeast-1', 'aws-ap-southeast-2', 'aws-us-east-1'];
-    let created = null;
     let last = '';
     for (const region of regions) {
       try {
-        created = await neonApi('/projects', {
+        created = await neonApi('/projects?org_id=' + encodeURIComponent(orgId), {
           method: 'POST',
-          body: { project: { name: 'bkf-bims-stock', region_id: region, pg_version: 16 } }
+          body: {
+            project: {
+              name: 'bkf-bims-stock',
+              region_id: region,
+              pg_version: 16,
+              org_id: orgId
+            }
+          }
         });
         break;
       } catch (err) {
@@ -89,9 +111,8 @@ async function ensureNeon() {
   }
   const projectId = project.id;
   let uri = uriFrom(project);
-  if (!uri && project.connection_uris && project.connection_uris[0]) {
-    uri = uriFrom(project.connection_uris[0]);
-  }
+  const uris = (created && created.connection_uris) || project.connection_uris || [];
+  if (!uri && uris[0]) uri = uriFrom(uris[0]);
   if (!uri) {
     const details = await neonApi('/projects/' + projectId);
     const role = ((details.roles || [])[0] || {}).name || 'neondb_owner';
