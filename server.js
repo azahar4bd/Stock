@@ -598,7 +598,8 @@ function userFromAuth(database, authorization, cookie) {
 function getNeon() {
   if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL missing');
   const { neon } = require('@neondatabase/serverless');
-  return neon(process.env.DATABASE_URL);
+  const sql = neon(process.env.DATABASE_URL);
+  return (text, params) => sql.query(text, params || []);
 }
 
 async function initRemoteStore() {
