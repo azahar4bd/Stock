@@ -213,7 +213,7 @@ function deploySite(siteId, preview) {
     '--json',
     '--message', preview ? 'BIMS preview' : 'BIMS stock register'
   ];
-  if (preview) args.push('--alias', 'preview', '--context', 'deploy-preview');
+  if (preview) args.push('--alias', 'preview');
   else args.push('--prod');
   const result = spawnSync('npx', args, {
     env: Object.assign({}, process.env, { CI: '1' }),
