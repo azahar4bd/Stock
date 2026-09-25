@@ -107,7 +107,6 @@ const I18N = {
     passwordBtn: 'পাসওয়ার্ড',
     navStock: 'স্টক',
     navEntry: 'এন্ট্রি',
-    navBook: 'খাতা',
     navReport: 'রিপোর্ট',
     navAdmin: 'অ্যাডমিন',
     morning: 'শুভ সকাল',
@@ -121,7 +120,7 @@ const I18N = {
     itemCount: 'আইটেম',
     searchItems: 'আইটেম খুঁজুন',
     stockTitle: 'স্টক রিপোর্ট',
-    stockHelp: 'সারি চাপলে সেই আইটেমের খাতা খুলবে।',
+    stockHelp: 'সারি চাপলে শুধু সেই আইটেম দেখাবে।',
     status: 'অবস্থা',
     total: 'মোট',
     serial: 'ক্রম',
@@ -267,7 +266,6 @@ const I18N = {
     passwordBtn: 'Password',
     navStock: 'Stock',
     navEntry: 'Entry',
-    navBook: 'Register',
     navReport: 'Report',
     navAdmin: 'Admin',
     morning: 'Good morning',
@@ -281,7 +279,7 @@ const I18N = {
     itemCount: 'Items',
     searchItems: 'Search items',
     stockTitle: 'Stock report',
-    stockHelp: 'Tap a row to open that item in the register.',
+    stockHelp: 'Tap a row to show only that item.',
     status: 'Status',
     total: 'Total',
     serial: 'No.',
@@ -900,7 +898,6 @@ function navButtons(extraClass) {
   const items = [
     ['stock', 'stock', 'navStock'],
     ['entry', 'entry', 'navEntry'],
-    ['book', 'book', 'navBook'],
     ['report', 'report', 'navReport']
   ];
   if (isAdmin()) items.push(['admin', 'admin', 'navAdmin']);
@@ -911,7 +908,7 @@ function navButtons(extraClass) {
 }
 
 function renderShell() {
-  const titles = { stock: 'navStock', entry: 'navEntry', book: 'navBook', report: 'navReport', admin: 'navAdmin' };
+  const titles = { stock: 'navStock', entry: 'navEntry', report: 'navReport', admin: 'navAdmin' };
   const branchSelect = isAdmin()
     ? '<select id="branch-switch" aria-label="' + esc(t('branch')) + '">' +
         '<option value="">' + esc(t('allBranches')) + '</option>' +
@@ -950,7 +947,8 @@ function renderView() {
   const focus = active && active.id ? { id: active.id, start: active.selectionStart, end: active.selectionEnd } : null;
   const root = document.getElementById('view');
   if (!root) return;
-  const views = { stock: viewStock, entry: viewEntry, book: viewBook, report: viewReport, admin: viewAdmin };
+  if (state.view === 'book') state.view = 'stock';
+  const views = { stock: viewStock, entry: viewEntry, report: viewReport, admin: viewAdmin };
   root.innerHTML = (views[state.view] || viewStock)();
   if (state.view === 'entry') updateLiveBalance();
   if (focus) {
@@ -1233,44 +1231,6 @@ function filteredRecords() {
     const blob = [r.itemName, itemLabel(r.itemName), r.chalanNo, r.fromVal, r.saleVal, r.createdBy, r.srNo, r.branchId].join(' ').toLowerCase();
     return blob.includes(q);
   }).sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.createdAt || '').localeCompare(a.createdAt || ''));
-}
-
-function viewBook() {
-  const rows = filteredRecords();
-  const itemOptions = '<option value="">' + esc(t('allItems')) + '</option>' + orderedItems().map(item =>
-    '<option value="' + esc(item) + '"' + (state.regItem === item ? ' selected' : '') + '>' + esc(itemLabel(item)) + '</option>'
-  ).join('');
-  const head = [t('date'), t('branch'), t('item'), t('chalan'), t('receive'), t('issue'), ''].map(h => '<span>' + thText(h) + '</span>').join('');
-  const body = rows.length
-    ? rows.map(recordRow).join('')
-    : '<p class="empty">' + esc(t('noRecords')) + '</p>';
-  return '<section class="panel">' +
-    '<div class="view-head"><div><h2 class="sheet-title">' + esc(t('bookTitle')) + '</h2><p class="muted">' + rows.length + '</p></div>' +
-      '<button type="button" class="btn ghost small no-print" data-action="export-book">' + esc(t('export')) + '</button></div>' +
-    '<div class="filters no-print">' +
-      '<input id="reg-q" placeholder="' + esc(t('searchRecords')) + '" value="' + esc(state.regQ) + '">' +
-      '<select id="reg-item">' + itemOptions + '</select>' +
-      '<input id="reg-from" type="date" value="' + esc(state.regFrom) + '" aria-label="' + esc(t('fromDate')) + '">' +
-      '<input id="reg-to" type="date" value="' + esc(state.regTo) + '" aria-label="' + esc(t('toDate')) + '">' +
-    '</div>' +
-    '<div class="ledger"><div class="ledger-head">' + head + '</div>' + body + '</div>' +
-  '</section>';
-}
-function recordRow(r) {
-  const flags = (r.sample ? '<span class="tag empty">' + esc(t('sample')) + '</span> ' : '') +
-    (r.updatedBy ? '<span class="tag">' + esc(t('edited')) + '</span>' : '');
-  return '<article class="ledger-row">' +
-    '<span class="cell" data-label="' + esc(t('date')) + '">' + esc(formatDate(r.date)) + '<span class="who num">SR ' + esc(r.srNo || '') + '</span></span>' +
-    '<span class="cell" data-label="' + esc(t('branch')) + '">' + esc(branchLabel(r.branchId)) + '<span class="who num">' + esc(r.branchId) + '</span></span>' +
-    '<span class="cell full" data-label="' + esc(t('item')) + '"><b>' + esc(itemLabel(r.itemName)) + '</b> ' + flags + '</span>' +
-    '<span class="cell num" data-label="' + esc(t('chalan')) + '">' + esc(r.chalanNo || '—') + '</span>' +
-    '<span class="cell" data-label="' + esc(t('receive')) + '"><span class="qty-in num">' + (r.fromAmt ? '+' + num(r.fromAmt) : '—') + '</span><span class="who">' + esc(r.fromVal || '') + '</span></span>' +
-    '<span class="cell" data-label="' + esc(t('issue')) + '"><span class="qty-out num">' + (r.saleAmt ? '−' + num(r.saleAmt) : '—') + '</span><span class="who">' + esc(r.saleVal || '') + '</span></span>' +
-    '<span class="cell row-actions" data-label="">' +
-      '<button type="button" class="btn tiny ghost" data-action="edit" data-id="' + esc(r.id) + '">' + esc(t('edit')) + '</button>' +
-      '<button type="button" class="btn tiny danger" data-action="delete" data-id="' + esc(r.id) + '">' + esc(t('delete')) + '</button>' +
-    '</span>' +
-  '</article>';
 }
 
 function reportRows() {
@@ -1684,8 +1644,8 @@ function bind() {
       return;
     }
     if (action === 'open-item') {
-      state.regItem = el.dataset.item;
-      state.view = 'book';
+      state.stockItem = el.dataset.item;
+      state.view = 'stock';
       renderShell();
       renderView();
       return;
@@ -1755,10 +1715,6 @@ function bind() {
         lines.push([branchLabel(r.branchId), itemLabel(r.item), r.inn, r.out, r.bal, t(kind === 'ok' ? 'inHand' : kind)].map(csvEscape).join(','));
       });
       download('bims-stock.csv', lines.join('\n'));
-      return;
-    }
-    if (action === 'export-book') {
-      download('bims-register.csv', recordsToCsv(filteredRecords()));
       return;
     }
     if (action === 'export-report') {
