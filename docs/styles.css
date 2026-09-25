@@ -504,6 +504,8 @@ input:focus, select:focus, textarea:focus {
 }
 .entry-actions .btn { padding: 7px 12px; }
 .entry-actions .btn.block { width: auto; flex: 1; margin-top: 0; }
+.report-entries { margin-top: 18px; }
+.report-entries .sheet-title { font-size: 18px; margin: 0 0 8px; }
 .entry-list { display: flex; flex-direction: column; gap: 14px; margin-top: 12px; }
 .entry-list > .panel { margin: 0; }
 .entry-filter-bar { padding: 12px; }

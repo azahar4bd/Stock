@@ -170,6 +170,7 @@ const I18N = {
     cancel: 'বাতিল',
     reportTitle: 'স্টক রিপোর্ট',
     reportHelp: 'প্রারম্ভিক = শুরুর আগের স্থিতি। স্থিতি = প্রারম্ভিক + গ্রহণ − বিতরণ।',
+    reportEntries: 'এন্ট্রি',
     opening: 'প্রারম্ভিক',
     received: 'গ্রহণ',
     issued: 'বিতরণ',
@@ -329,6 +330,7 @@ const I18N = {
     cancel: 'Cancel',
     reportTitle: 'Stock report',
     reportHelp: 'Opening is the balance before the start date. Closing = opening + in − out.',
+    reportEntries: 'Entries',
     opening: 'Opening',
     received: 'In',
     issued: 'Out',
@@ -505,6 +507,7 @@ const state = {
   regTo: '',
   repFrom: '',
   repTo: '',
+  repItem: '',
   draft: null,
   modal: null
 };
@@ -1251,11 +1254,23 @@ function reportRows() {
           out += Number(r.saleAmt) || 0;
         }
       });
+      if (state.repItem && item !== state.repItem) return;
       if (opening === 0 && inn === 0 && out === 0) return;
       rows.push({ branchId: b.id, item, opening, inn, out, closing: opening + inn - out });
     });
   });
   return rows;
+}
+function reportEntries() {
+  const from = state.repFrom || '0000-01-01';
+  const to = state.repTo || '9999-12-31';
+  const branch = effectiveBranch();
+  return state.records.filter(r => {
+    if (branch && r.branchId !== branch) return false;
+    if (state.repItem && r.itemName !== state.repItem) return false;
+    const d = r.date || '';
+    return d >= from && d <= to;
+  }).sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.createdAt || '').localeCompare(a.createdAt || ''));
 }
 function viewReport() {
   const rows = reportRows();
@@ -1271,24 +1286,56 @@ function viewReport() {
     '</tr>'
   ).join('');
   const branchName = effectiveBranch() ? branchLabel(effectiveBranch()) : t('allBranches');
+  const itemOptions = '<option value="">' + esc(t('allItems')) + '</option>' + orderedItems().map(item =>
+    '<option value="' + esc(item) + '"' + (state.repItem === item ? ' selected' : '') + '>' + esc(itemLabel(item)) + '</option>'
+  ).join('');
+  const entries = reportEntries();
+  const showEntryBranch = !effectiveBranch();
+  const entryBody = entries.map(r =>
+    '<tr>' +
+      '<td class="left">' + esc(formatDate(r.date)) + '</td>' +
+      (showEntryBranch ? '<td class="left">' + esc(branchLabel(r.branchId)) + '</td>' : '') +
+      '<td class="left">' + esc(itemLabel(r.itemName)) + '</td>' +
+      '<td>' + esc(r.chalanNo || '—') + '</td>' +
+      '<td class="left">' + esc(r.fromVal || '—') + '</td>' +
+      '<td class="num qty-in">' + (r.fromAmt ? num(r.fromAmt) : '—') + '</td>' +
+      '<td class="left">' + esc(r.saleVal || '—') + '</td>' +
+      '<td class="num qty-out">' + (r.saleAmt ? num(r.saleAmt) : '—') + '</td>' +
+    '</tr>'
+  ).join('');
+  const entryTitle = state.repItem ? itemLabel(state.repItem) + ' · ' + t('reportEntries') : t('reportEntries');
   return '<section class="panel" id="print-area">' +
     '<div class="print-head">' +
       '<p class="eyebrow">BIMS</p><h1>' + esc(t('org')) + '</h1>' +
       '<p>' + esc(t('reportTitle')) + ' · ' + esc(branchName) + '</p>' +
-      '<p>' + esc(formatDate(state.repFrom)) + ' — ' + esc(formatDate(state.repTo)) + '</p>' +
+      '<p>' + esc(formatDate(state.repFrom)) + ' — ' + esc(formatDate(state.repTo)) + (state.repItem ? ' · ' + esc(itemLabel(state.repItem)) : '') + '</p>' +
       '<p>' + esc(t('printedBy')) + ': ' + esc(state.user.email) + '</p>' +
     '</div>' +
     '<div class="view-head no-print"><div><h2 class="sheet-title">' + esc(t('reportTitle')) + '</h2><p class="muted">' + esc(t('reportHelp')) + '</p></div>' +
       '<div class="actions"><button type="button" class="btn ghost small" data-action="print">' + esc(t('print')) + '</button>' +
       '<button type="button" class="btn ghost small" data-action="export-report">' + esc(t('export')) + '</button></div></div>' +
-    '<div class="row-2 no-print" style="margin-bottom:12px">' +
+    '<div class="entry-filters no-print">' +
       '<label>' + esc(t('fromDate')) + '<input id="rep-from" type="date" value="' + esc(state.repFrom) + '"></label>' +
       '<label>' + esc(t('toDate')) + '<input id="rep-to" type="date" value="' + esc(state.repTo) + '"></label>' +
+      '<label>' + esc(t('item')) + '<select id="rep-item">' + itemOptions + '</select></label>' +
     '</div>' +
     (rows.length ? '<div class="table-wrap"><table class="report-table"><thead><tr>' +
       (showBranch ? th(t('branch'), 'left') : '') +
       th(t('item'), 'left') + th(t('opening'), 'c-num') + th(t('received'), 'c-num') + th(t('issued'), 'c-num') + th(t('closing'), 'c-num') +
       '</tr></thead><tbody>' + body + '</tbody></table></div>' : '<p class="empty">' + esc(t('noReport')) + '</p>') +
+    '<div class="report-entries">' +
+      '<h3 class="sheet-title">' + esc(entryTitle) + '</h3>' +
+      (entries.length ? '<div class="table-wrap"><table class="report-table"><thead><tr>' +
+        th(t('date'), 'left') +
+        (showEntryBranch ? th(t('branch'), 'left') : '') +
+        th(t('item'), 'left') +
+        th(t('chalan')) +
+        th(t('fromWho'), 'left') +
+        th(t('fromQty'), 'c-num') +
+        th(t('toWhom'), 'left') +
+        th(t('toQty'), 'c-num') +
+        '</tr></thead><tbody>' + entryBody + '</tbody></table></div>' : '<p class="empty">' + esc(t('noRecords')) + '</p>') +
+    '</div>' +
     '<div class="signs print-only"><div>' + esc(t('prepared')) + '</div><div>' + esc(t('checked')) + '</div><div>' + esc(t('manager')) + '</div></div>' +
   '</section>';
 }
@@ -1893,6 +1940,7 @@ function bind() {
     if (id === 'reg-to') { captureDraft(); state.regTo = e.target.value; renderView(); return; }
     if (id === 'rep-from') { state.repFrom = e.target.value; renderView(); return; }
     if (id === 'rep-to') { state.repTo = e.target.value; renderView(); return; }
+    if (id === 'rep-item') { state.repItem = e.target.value; renderView(); return; }
     if (id === 'restore-file' && e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       e.target.value = '';
