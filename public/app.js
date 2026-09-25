@@ -1006,16 +1006,13 @@ function viewStock() {
     out += r.out;
     bal += r.bal;
     const kind = tone(r.bal);
-    const tagKey = kind === 'ok' ? 'inHand' : kind;
     return '<tr class="is-' + kind + '">' +
       '<td class="num">' + (i + 1) + '</td>' +
       (showBranch ? '<td class="left">' + esc(branchLabel(r.branchId)) + '<div class="who num">' + esc(r.branchId) + '</div></td>' : '') +
-      '<td class="left"><button type="button" class="linkish" data-action="open-item" data-item="' + esc(r.item) + '"><b>' + esc(itemLabel(r.item)) + '</b></button>' +
-        (itemSub(r.item) ? '<div class="who">' + esc(itemSub(r.item)) + '</div>' : '') + '</td>' +
+      '<td class="left"><button type="button" class="linkish" data-action="open-item" data-item="' + esc(r.item) + '"><b>' + esc(itemLabel(r.item)) + '</b></button></td>' +
       '<td class="num">' + num(r.inn) + '</td>' +
       '<td class="num">' + num(r.out) + '</td>' +
       '<td class="num ' + (r.bal < 0 ? 'neg' : (r.bal > 0 && r.bal <= 5 ? 'low' : '')) + '">' + num(r.bal) + '</td>' +
-      '<td class="status-cell"><span class="tag ' + kind + '">' + esc(t(tagKey)) + '</span></td>' +
     '</tr>';
   }).join('');
   const totalRow = rows.length
@@ -1024,8 +1021,7 @@ function viewStock() {
         '<td class="left"><b>' + esc(t('total')) + '</b></td>' +
         '<td class="num">' + num(inn) + '</td>' +
         '<td class="num">' + num(out) + '</td>' +
-        '<td class="num ' + (bal < 0 ? 'neg' : '') + '">' + num(bal) + '</td>' +
-        '<td></td></tr>'
+        '<td class="num ' + (bal < 0 ? 'neg' : '') + '">' + num(bal) + '</td></tr>'
     : '';
   const note = !state.hideSampleNote && scoped.some(r => r.sample)
     ? '<div class="banner no-print"><span>' + esc(t('sampleNote')) + '</span><button type="button" class="btn tiny ghost" data-action="dismiss-sample">' + esc(t('dismiss')) + '</button></div>'
@@ -1056,7 +1052,7 @@ function viewStock() {
             th(t('serial'), 'c-num') +
             (showBranch ? th(t('branch'), 'left') : '') +
             th(t('item'), 'left') +
-            th(t('inQty'), 'c-num') + th(t('outQty'), 'c-num') + th(t('balance'), 'c-num') + th(t('status'), 'c-num') +
+            th(t('inQty'), 'c-num') + th(t('outQty'), 'c-num') + th(t('balance'), 'c-num') +
           '</tr></thead><tbody>' + body + totalRow + '</tbody></table></div>'
         : '<p class="empty">' + esc(t('noRecords')) + '</p>') +
       '<p class="hint no-print">' + esc(t('stockHelp')) + '</p>' +
@@ -1755,11 +1751,10 @@ function bind() {
     }
     if (action === 'export-stock') {
       const rows = stockReportRows();
-      const header = ['Branch', 'Item', 'In', 'Out', 'Balance', 'Status'];
+      const header = ['Branch', 'Item', 'In', 'Out', 'Balance'];
       const lines = ['\uFEFF' + header.join(',')];
       rows.forEach(r => {
-        const kind = tone(r.bal);
-        lines.push([branchLabel(r.branchId), itemLabel(r.item), r.inn, r.out, r.bal, t(kind === 'ok' ? 'inHand' : kind)].map(csvEscape).join(','));
+        lines.push([branchLabel(r.branchId), itemLabel(r.item), r.inn, r.out, r.bal].map(csvEscape).join(','));
       });
       download('bims-stock.csv', lines.join('\n'));
       return;
