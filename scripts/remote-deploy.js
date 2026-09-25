@@ -201,24 +201,36 @@ async function setEnv(site, key, value) {
   fail('could not set ' + key + ': ' + last + ' | ' + redact((cli.stdout || '') + (cli.stderr || '')).slice(-500));
 }
 
-function deploySite(siteId) {
-  const result = spawnSync('npx', [
+function deploySite(siteId, preview) {
+  const args = [
     '--yes',
     'netlify-cli',
     'deploy',
-    '--prod',
     '--dir', 'public',
     '--functions', 'netlify/functions',
     '--site', siteId,
-    '--message', 'BIMS stock register'
-  ], {
+    '--no-build',
+    '--json',
+    '--message', preview ? 'BIMS preview' : 'BIMS stock register'
+  ];
+  if (preview) args.push('--alias', 'preview', '--context', 'deploy-preview');
+  else args.push('--prod');
+  const result = spawnSync('npx', args, {
     env: Object.assign({}, process.env, { CI: '1' }),
     encoding: 'utf8'
   });
   const output = redact((result.stdout || '') + '\n' + (result.stderr || ''));
   if (result.status !== 0) fail('netlify deploy failed\n' + output.slice(-2000));
-  const match = output.match(/https:\/\/[a-z0-9.-]+\.netlify\.app/i);
-  return { output: output.slice(-1500), url: match ? match[0] : '' };
+  const jsonStart = output.indexOf('{');
+  let parsed = null;
+  if (jsonStart >= 0) {
+    try { parsed = JSON.parse(output.slice(jsonStart)); } catch { parsed = null; }
+  }
+  const url = (parsed && (parsed.deploy_url || parsed.url))
+    || (output.match(/https:\/\/preview--[a-z0-9.-]+\.netlify\.app/i) || [])[0]
+    || (output.match(/https:\/\/[a-z0-9-]+--[a-z0-9.-]+\.netlify\.app/i) || [])[0]
+    || '';
+  return { output: output.slice(-1500), url };
 }
 
 async function publish(summary, ok) {
@@ -248,7 +260,22 @@ async function publish(summary, ok) {
 }
 
 async function main() {
-  if (!process.env.NEON_API_KEY || !process.env.NETLIFY_AUTH_TOKEN) fail('deploy credentials missing');
+  if (!process.env.NETLIFY_AUTH_TOKEN) fail('deploy credentials missing');
+  if (process.env.BIMS_PREVIEW === '1') {
+    const site = await ensureSite();
+    const deployed = deploySite(site.id, true);
+    if (!deployed.url) fail('preview URL missing\n' + deployed.output);
+    const summary = [
+      'PREVIEW_URL=' + deployed.url,
+      'SITE_ID=' + site.id,
+      'SITE_NAME=' + (site.name || ''),
+      'CONTEXT=deploy-preview'
+    ].join('\n');
+    await publish(summary, true);
+    console.log(summary);
+    return;
+  }
+  if (!process.env.NEON_API_KEY) fail('deploy credentials missing');
   const neon = await ensureNeon();
   const site = await ensureSite();
   const sessionSecret = crypto.randomBytes(32).toString('hex');
