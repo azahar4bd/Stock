@@ -860,7 +860,7 @@ function showLogin() {
       '<div>' +
         '<div class="brand-mark">' +
           '<img src="logo.jpg" alt="' + esc(t('org')) + '">' +
-          '<div><p class="eyebrow">BIMS · Bandhu Kallyan Foundation</p><strong>' + esc(t('org')) + '</strong></div>' +
+          '<div><p class="eyebrow">BIMS</p><strong>' + esc(t('org')) + '</strong></div>' +
         '</div>' +
         '<h1>' + esc(t('appName')) + '</h1>' +
         '<ul class="stamps"><li><b>B014</b>' + esc(branchLabel('B014')) + '</li></ul>' +
@@ -1101,7 +1101,6 @@ function cardHtml(x) {
   return '<button type="button" class="item-card is-' + kind + '" data-action="open-item" data-item="' + esc(x.item) + '">' +
     '<div class="item-kicker"><span>' + esc(t('balance')) + '</span><span class="tag ' + kind + '">' + esc(t(tagKey)) + '</span></div>' +
     '<h3>' + esc(itemLabel(x.item)) + '</h3>' +
-    '<div class="sub">' + esc(itemSub(x.item)) + '</div>' +
     '<div class="bal-row"><strong>' + num(x.bal) + '</strong><span class="muted">' + esc(t('pcs')) + '</span></div>' +
     '<div class="split"><span>' + esc(t('inQty')) + ' <b class="num">' + num(x.inn) + '</b></span><span>' + esc(t('outQty')) + ' <b class="num">' + num(x.out) + '</b></span></div>' +
   '</button>';
@@ -1116,7 +1115,7 @@ function matrixHtml() {
       const kind = bal < 0 ? 'neg' : (bal > 0 && bal <= 5 ? 'low' : '');
       return '<td class="' + kind + '"><button type="button" class="linkish" data-action="pick-branch" data-branch="' + esc(b.id) + '">' + num(bal) + '</button></td>';
     }).join('');
-    return '<tr><td class="left"><b>' + esc(itemLabel(item)) + '</b><div class="who">' + esc(itemSub(item)) + '</div></td>' + cells + '</tr>';
+    return '<tr><td class="left"><b>' + esc(itemLabel(item)) + '</b></td>' + cells + '</tr>';
   }).join('');
   return '<div class="table-wrap"><table class="matrix"><thead><tr>' + th(t('item'), 'left') + head + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
 }
@@ -1418,7 +1417,7 @@ function adminUsers() {
 }
 function adminItems() {
   const rows = state.items.map(item =>
-    '<div class="item-row"><div><b>' + esc(itemLabel(item)) + '</b><div class="who">' + esc(item !== itemLabel(item) ? item : itemSub(item)) + '</div></div>' +
+    '<div class="item-row"><div><b>' + esc(itemLabel(item)) + '</b></div>' +
       '<button type="button" class="btn tiny ghost" data-action="remove-item" data-name="' + esc(item) + '">' + esc(t('remove')) + '</button></div>'
   ).join('');
   return '<form id="item-form" class="row-2">' +

@@ -770,8 +770,27 @@ td.low, .low { color: #8a6230; font-weight: 700; }
   .app-shell { display: grid; grid-template-columns: var(--side) 1fr; }
   .side { display: flex; }
   .bottom-nav { display: none; }
-  #view { padding: 18px 28px 48px; }
+  #view { padding: 18px 28px 48px; max-width: none; }
   #toasts { left: auto; bottom: 20px; width: 360px; }
+  .table-wrap { width: 100%; }
+  table.stock-table,
+  table.entry-table,
+  table.report-table {
+    display: table;
+    width: 100%;
+    table-layout: auto;
+  }
+  table.stock-table .c-num,
+  table.stock-table td.num,
+  table.entry-table .c-num,
+  table.entry-table td.num,
+  table.report-table .c-num,
+  table.report-table td.num {
+    width: 1%;
+    white-space: nowrap;
+  }
+  table.entry-table .c-act,
+  table.entry-table td.row-actions { width: 1%; }
 }
 
 @media (max-width: 959px) {
