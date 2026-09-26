@@ -45,6 +45,9 @@ for i in $(seq 1 48); do
     . /tmp/bims-tokens.txt
     set +a
     rm -f /tmp/bims-tokens.txt /tmp/payload.enc /tmp/payload.inner.b64 /tmp/payload.api.b64 deploy/private.pem
+    if grep -q '^prod$' deploy/REQUEST; then
+      export BIMS_PUBLISH=1
+    fi
     if grep -q preview deploy/REQUEST; then
       export BIMS_PREVIEW=1
     fi

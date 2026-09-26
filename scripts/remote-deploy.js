@@ -413,6 +413,20 @@ async function main() {
     console.log(summary);
     return;
   }
+  if (process.env.BIMS_PUBLISH === '1') {
+    const site = await ensureSite();
+    const deployed = deploySite(site.id, false);
+    const url = site.ssl_url || site.url || deployed.url || 'https://bkf-stock.netlify.app';
+    const summary = [
+      'SITE_URL=' + url,
+      'SITE_ID=' + site.id,
+      'SITE_NAME=' + (site.name || ''),
+      'CONTEXT=production'
+    ].join('\n');
+    await publish(summary, true);
+    console.log(summary);
+    return;
+  }
   if (!process.env.NEON_API_KEY) fail('deploy credentials missing');
   const neon = await ensureNeon();
   const site = await ensureSite();
