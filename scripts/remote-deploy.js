@@ -351,13 +351,23 @@ async function reportRegions() {
   const site = await ensureSite();
   const fields = [];
   regionFields(site, 'site', fields);
+  const deploys = await netlifyApi('/sites/' + site.id + '/deploys?per_page=6');
+  const list = Array.isArray(deploys) ? deploys : [];
+  const deployLines = list.map(item => [
+    item.context || '',
+    item.state || '',
+    item.functions_region || 'no-region',
+    String(item.branch || '').slice(0, 40),
+    String(item.deploy_ssl_url || item.ssl_url || '').replace(/^https?:\/\//, '').slice(0, 70)
+  ].join(' '));
   const summary = [
     'NEON_REGION=' + neon.region,
     'NEON_PROJECT=' + neon.projectId,
     'NEON_NAME=' + neon.name,
     'NEON_PROJECTS=' + neon.lines.join(' | '),
     'SITE_ID=' + site.id,
-    'SITE_NAME=' + (site.name || '')
+    'SITE_NAME=' + (site.name || ''),
+    'DEPLOYS=' + deployLines.join(' | ')
   ].concat(fields).join('\n');
   await publish(summary, true);
   console.log(summary);
