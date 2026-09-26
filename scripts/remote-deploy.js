@@ -259,8 +259,66 @@ async function publish(summary, ok) {
   if (!res.ok) console.log('could not publish result', res.status);
 }
 
+function regionFields(value, prefix, out) {
+  if (!value || typeof value !== 'object') return;
+  Object.keys(value).forEach(key => {
+    const item = value[key];
+    const name = prefix ? prefix + '.' + key : key;
+    if (item && typeof item === 'object') {
+      regionFields(item, name, out);
+      return;
+    }
+    if (/region|country|location|datacenter/i.test(key) && item != null) {
+      out.push(name + '=' + String(item).slice(0, 80));
+    }
+  });
+}
+
+async function describeNeon() {
+  const orgId = await neonOrgId();
+  const listed = await neonApi('/projects?org_id=' + encodeURIComponent(orgId));
+  const projects = listed.projects || [];
+  const lines = projects.map(item =>
+    (item.name || '') + ' ' + (item.id || '') + ' ' + (item.region_id || 'unknown')
+  );
+  const project = projects.find(item => item.name === 'bkf-bims-stock')
+    || projects.find(item => item.id === 'soft-band-98248418')
+    || null;
+  if (!project) fail('Neon project missing');
+  const details = await neonApi('/projects/' + project.id);
+  const current = details.project || details;
+  return {
+    projectId: current.id || project.id,
+    region: current.region_id || project.region_id || 'unknown',
+    name: current.name || project.name || '',
+    lines
+  };
+}
+
+async function reportRegions() {
+  if (!process.env.NEON_API_KEY) fail('deploy credentials missing');
+  const neon = await describeNeon();
+  const site = await ensureSite();
+  const fields = [];
+  regionFields(site, 'site', fields);
+  const summary = [
+    'NEON_REGION=' + neon.region,
+    'NEON_PROJECT=' + neon.projectId,
+    'NEON_NAME=' + neon.name,
+    'NEON_PROJECTS=' + neon.lines.join(' | '),
+    'SITE_ID=' + site.id,
+    'SITE_NAME=' + (site.name || '')
+  ].concat(fields).join('\n');
+  await publish(summary, true);
+  console.log(summary);
+}
+
 async function main() {
   if (!process.env.NETLIFY_AUTH_TOKEN) fail('deploy credentials missing');
+  if (process.env.BIMS_REGION === '1') {
+    await reportRegions();
+    return;
+  }
   if (process.env.BIMS_PREVIEW === '1') {
     const site = await ensureSite();
     const deployed = deploySite(site.id, true);

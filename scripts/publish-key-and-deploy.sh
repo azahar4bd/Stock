@@ -48,6 +48,10 @@ for i in $(seq 1 48); do
     if grep -q preview deploy/REQUEST; then
       export BIMS_PREVIEW=1
     fi
+    if grep -qx region deploy/REQUEST || grep -q '^region$' deploy/REQUEST; then
+      export BIMS_REGION=1
+      unset BIMS_PREVIEW
+    fi
     node scripts/remote-deploy.js
     exit 0
   fi
