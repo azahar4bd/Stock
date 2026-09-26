@@ -295,6 +295,56 @@ async function describeNeon() {
   };
 }
 
+async function pinFunctionRegion(site) {
+  const attempts = [
+    { functions_region: 'ap-southeast-1' },
+    { functions_region: 'sin' }
+  ];
+  let last = '';
+  for (const body of attempts) {
+    try {
+      await netlifyApi('/sites/' + site.id, { method: 'PATCH', body });
+      const fresh = await netlifyApi('/sites/' + site.id);
+      return fresh.functions_region || body.functions_region;
+    } catch (err) {
+      last = redact(err.message);
+    }
+  }
+  return 'unchanged ' + last.slice(0, 180);
+}
+
+async function warmNeon(projectId) {
+  let listed;
+  try {
+    listed = await neonApi('/projects/' + projectId + '/endpoints');
+  } catch (err) {
+    return 'endpoints ' + redact(err.message).slice(0, 160);
+  }
+  const endpoints = listed.endpoints || [];
+  if (!endpoints.length) return 'no-endpoints';
+  const lines = [];
+  for (const endpoint of endpoints) {
+    if (!endpoint.id) continue;
+    let applied = '';
+    let last = '';
+    for (const seconds of [-1, 3600, 300]) {
+      try {
+        const updated = await neonApi('/projects/' + projectId + '/endpoints/' + endpoint.id, {
+          method: 'PATCH',
+          body: { endpoint: { suspend_timeout_seconds: seconds } }
+        });
+        const ep = updated.endpoint || updated;
+        applied = String(ep.suspend_timeout_seconds != null ? ep.suspend_timeout_seconds : seconds);
+        break;
+      } catch (err) {
+        last = redact(err.message);
+      }
+    }
+    lines.push(endpoint.id + ' suspend=' + (applied || ('failed ' + last.slice(0, 120))));
+  }
+  return lines.join(' | ');
+}
+
 async function reportRegions() {
   if (!process.env.NEON_API_KEY) fail('deploy credentials missing');
   const neon = await describeNeon();
@@ -321,13 +371,33 @@ async function main() {
   }
   if (process.env.BIMS_PREVIEW === '1') {
     const site = await ensureSite();
+    let region = 'not-set';
+    let neonRegion = 'unknown';
+    let warm = 'skipped';
+    try {
+      region = await pinFunctionRegion(site);
+    } catch (err) {
+      region = 'error ' + redact(err.message).slice(0, 160);
+    }
+    if (process.env.NEON_API_KEY) {
+      try {
+        const neon = await describeNeon();
+        neonRegion = neon.region;
+        warm = await warmNeon(neon.projectId);
+      } catch (err) {
+        neonRegion = 'error ' + redact(err.message).slice(0, 160);
+      }
+    }
     const deployed = deploySite(site.id, true);
     if (!deployed.url) fail('preview URL missing\n' + deployed.output);
     const summary = [
       'PREVIEW_URL=' + deployed.url,
       'SITE_ID=' + site.id,
       'SITE_NAME=' + (site.name || ''),
-      'CONTEXT=deploy-preview'
+      'CONTEXT=deploy-preview',
+      'FUNCTIONS_REGION=' + region,
+      'NEON_REGION=' + neonRegion,
+      'NEON_WARM=' + warm
     ].join('\n');
     await publish(summary, true);
     console.log(summary);

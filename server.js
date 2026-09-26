@@ -638,6 +638,8 @@ function userFromAuth(database, authorization, cookie) {
   return resolveUser(database, session.email);
 }
 
+let schemaReady = false;
+
 function getNeon() {
   if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL missing');
   const { neon } = require('@neondatabase/serverless');
@@ -645,13 +647,19 @@ function getNeon() {
   return (text, params) => sql.query(text, params || []);
 }
 
-async function initRemoteStore() {
-  const sql = getNeon();
+async function ensureSchema(sql) {
+  if (schemaReady) return;
   await sql(`CREATE TABLE IF NOT EXISTS bims_state (
     id text PRIMARY KEY,
     data jsonb NOT NULL,
     version integer NOT NULL DEFAULT 1
   )`);
+  schemaReady = true;
+}
+
+async function initRemoteStore() {
+  const sql = getNeon();
+  await ensureSchema(sql);
   const rows = await sql('SELECT version FROM bims_state WHERE id = $1', ['main']);
   if (!rows.length) {
     const fresh = createFreshDb();
@@ -670,11 +678,7 @@ async function loadState() {
     return { db, version: null, remote: false, dirty: false };
   }
   const sql = getNeon();
-  await sql(`CREATE TABLE IF NOT EXISTS bims_state (
-    id text PRIMARY KEY,
-    data jsonb NOT NULL,
-    version integer NOT NULL DEFAULT 1
-  )`);
+  await ensureSchema(sql);
   const rows = await sql('SELECT data, version FROM bims_state WHERE id = $1', ['main']);
   if (!rows.length) {
     const fresh = createFreshDb();

@@ -27,6 +27,8 @@ function header(event, name) {
   return '';
 }
 
+exports.config = { region: 'sin' };
+
 exports.handler = async function (event) {
   try {
     let body = {};

@@ -3,6 +3,7 @@
 const DEMO_PASSWORD = 'bkf2026';
 
 let useLocalStore = null;
+let refreshGen = 0;
 
 function staticHost() {
   const host = location.hostname;
@@ -727,8 +728,36 @@ async function api(path, options) {
   return data;
 }
 
+function rememberSaved(data, result) {
+  const id = (result && result.id) || data.id;
+  const now = new Date().toISOString();
+  const previous = state.records.find(r => r.id === id);
+  const record = {
+    id: id,
+    branchId: data.branchId,
+    srNo: (previous && previous.srNo) || data.srNo || '1',
+    date: data.date,
+    itemName: data.itemName,
+    chalanNo: data.chalanNo || '',
+    fromVal: data.fromVal || '',
+    fromAmt: data.fromAmt,
+    saleVal: data.saleVal || '',
+    saleAmt: data.saleAmt,
+    createdBy: (previous && previous.createdBy) || (state.user && state.user.email) || '',
+    createdAt: (previous && previous.createdAt) || now,
+    updatedBy: previous ? ((state.user && state.user.email) || '') : '',
+    updatedAt: previous ? now : '',
+    sample: false
+  };
+  const index = state.records.findIndex(r => r.id === id);
+  if (index >= 0) state.records[index] = record;
+  else state.records.unshift(record);
+}
+
 async function refresh() {
+  const gen = ++refreshGen;
   const data = await api('/api/app');
+  if (gen !== refreshGen) return;
   state.user = {
     email: data.userEmail,
     role: data.userRole,
@@ -1542,7 +1571,8 @@ async function doSave(form, force) {
     }
     if (btn) btn.disabled = true;
     const result = await api('/api/records', { method: 'POST', body: data });
-    await refresh();
+    refreshGen += 1;
+    rememberSaved(data, result);
     const wasEdit = !!data.id;
     const hidden = (state.regFrom && data.date < state.regFrom) || (state.regTo && data.date > state.regTo) || (state.regItem && state.regItem !== data.itemName);
     if (hidden) {
@@ -1556,6 +1586,7 @@ async function doSave(form, force) {
     renderView();
     const row = result && result.id ? document.querySelector('[data-id="' + result.id + '"]') : null;
     if (row && row.scrollIntoView) row.scrollIntoView({ block: 'center' });
+    refresh().catch(() => {});
   } catch (e) {
     showEntryError(e.message);
     if (btn) btn.disabled = false;
