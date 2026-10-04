@@ -201,6 +201,41 @@ async function setEnv(site, key, value) {
   fail('could not set ' + key + ': ' + last + ' | ' + redact((cli.stdout || '') + (cli.stderr || '')).slice(-500));
 }
 
+function usefulFields(value, prefix, out) {
+  if (!value || typeof value !== 'object') return;
+  Object.keys(value).forEach(key => {
+    const item = value[key];
+    const name = prefix ? prefix + '.' + key : key;
+    if (item && typeof item === 'object') {
+      usefulFields(item, name, out);
+      return;
+    }
+    if (/credit|plan|payment|billing|capability|forbidden|limit|balance/i.test(key) && item != null && typeof item !== 'object') {
+      out.push(name + '=' + String(item).slice(0, 80));
+    }
+  });
+}
+
+async function billingNote(site) {
+  const account = site.account_slug || site.account_id || '';
+  const paths = [
+    '/accounts/' + account,
+    '/accounts/' + account + '/billing'
+  ];
+  const lines = [];
+  for (const path of paths) {
+    try {
+      const data = await netlifyApi(path);
+      const fields = [];
+      usefulFields(data, path, fields);
+      lines.push(fields.slice(0, 12).join(' | ') || path + ' ok');
+    } catch (err) {
+      lines.push(path + ' ' + redact(err.message).slice(0, 220));
+    }
+  }
+  return lines.join('\n');
+}
+
 function deploySite(siteId, preview) {
   const args = [
     '--yes',
@@ -415,7 +450,13 @@ async function main() {
   }
   if (process.env.BIMS_PUBLISH === '1') {
     const site = await ensureSite();
-    const deployed = deploySite(site.id, false);
+    let deployed;
+    try {
+      deployed = deploySite(site.id, false);
+    } catch (err) {
+      const note = await billingNote(site);
+      fail(err.message + '\nBILLING\n' + note);
+    }
     const url = site.ssl_url || site.url || deployed.url || 'https://bkf-stock.netlify.app';
     const summary = [
       'SITE_URL=' + url,
